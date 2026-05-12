@@ -12,7 +12,8 @@
  */
 
 #include "bluetooth.h"
-#include "usart.h"
+#include "main.h"
+#include <string.h>
 
 // USART3 句柄
 extern UART_HandleTypeDef huart3;

@@ -7,6 +7,7 @@
  */
 
 #include "encoder.h"
+#include "stm32f1xx_hal.h"
 
 // TIM2 句柄（由 CubeMX 生成）
 extern TIM_HandleTypeDef htim2;
@@ -16,10 +17,6 @@ static volatile int32_t right_count = 0;
 
 static volatile float left_speed_rpm  = 0.0f;
 static volatile float right_speed_rpm = 0.0f;
-
-// 上一次计数（用于检测溢出方向）
-static int32_t last_left_count  = 0;
-static int32_t last_right_count = 0;
 
 /**
  * 编码器初始化
@@ -48,14 +45,9 @@ void Encoder_Update_Speed(void)
     // 此处简化为 TIM2，左轮用 CCR1，右轮需要另一个定时器
 
     // 速度计算（rpm）
-    // 每采样周期计数增量 / 每转脉冲数 / 采样时间(秒)
-    // 840 脉冲/转 × 4 倍频 = 3360 脉冲/转（正交解码）
-    // 假设 TIM2 每转脉冲数 = 840 * 4 = 3360
-    // speed_rpm = count_delta / 3360 / (dt = 0.01s) * 60
-
-    float dt = 0.01f; // 10ms
-    // 简化处理（需根据实际定时器分配调整）
-    (void)current_left; // 消除警告，实际用 TIM2/TIM4 分离左右轮
+    // 速度 = 计数增量 / 每转脉冲数 / 采样时间
+    // 留待左右轮独立定时器实现后完善
+    (void)current_left;
 }
 
 /**

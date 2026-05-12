@@ -72,11 +72,7 @@ static volatile int16_t right_speed  = 0;
 static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
 
-// 平衡车状态
-typedef enum {
-    BALANCE_IDLE = 0,   // 停机状态
-    BALANCE_RUN  = 1    // 平衡运行
-} balance_state_t;
+// 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
 
 // ============================================================
@@ -106,7 +102,6 @@ void Balance_Control_5ms(void)
 {
     // 读取姿态
     float pitch = MPU6050_Get_Pitch();
-    float gyro  = MPU6050_Get_Gyro_X();  // 角速度（°/s）
 
     // 倾角过大 → 停止保护（车倒了就停电机）
     if (pitch >  45.0f || pitch < -45.0f) {
@@ -119,11 +114,6 @@ void Balance_Control_5ms(void)
 
     balance_state = BALANCE_RUN;
 
-    // ---- 直立环 PID ----
-    // 输入：pitch（角度），目标=0
-    // 输出：PWM
-    float balance_output = PID_Calculate(&balance_pid, 0.0f, pitch, 0.005f);
-
     // ---- 速度环输出叠加到期望角度 ----
     // 速度环输出 = 期望倾角（车往前倾=前进）
     float speed_output = 0.0f;
@@ -134,7 +124,7 @@ void Balance_Control_5ms(void)
                                       0.005f);
     }
 
-    // 合成最终 PWM（直立环用调整后的期望角度）
+    // ---- 直立环 PID（目标倾角由速度环输出决定）----
     float final_output = PID_Calculate(&balance_pid, -speed_output, pitch, 0.005f);
 
     // 差速转向

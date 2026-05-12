@@ -114,6 +114,8 @@ void MX_TIM1_Init(void)
 // ============================================================
 void MX_TIM2_Init(void)
 {
+    TIM_Encoder_InitTypeDef sEncoderConfig = {0};
+
     __HAL_RCC_TIM2_CLK_ENABLE();
 
     htim2.Instance               = TIM2;
@@ -122,11 +124,18 @@ void MX_TIM2_Init(void)
     htim2.Init.CounterMode       = TIM_COUNTERMODE_UP;
     htim2.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    HAL_TIM_Encoder_Init(&htim2);
 
-    // 设置编码器接口：TI1 and TI2 边沿计数（4 倍频）
-    TIM2->SMCR = (TIM2->SMCR & ~TIM_SMCR_SMS)
-                 | TIM_ENCODERMODE_TI12;
+    // 正交解码配置：TI1 和 TI2 双边沿计数 = 4 倍频
+    sEncoderConfig.EncoderMode        = TIM_ENCODERMODE_TI12;
+    sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC1Selection       = TIM_ICSELECTION_DIRECTTI;
+    sEncoderConfig.IC1Prescaler       = TIM_ICPSC_DIV1;
+    sEncoderConfig.IC1Filter          = 0;  // 可调，过滤噪声
+    sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC2Selection       = TIM_ICSELECTION_DIRECTTI;
+    sEncoderConfig.IC2Prescaler       = TIM_ICPSC_DIV1;
+    sEncoderConfig.IC2Filter          = 0;
+    HAL_TIM_Encoder_Init(&htim2, &sEncoderConfig);
 }
 
 // ============================================================

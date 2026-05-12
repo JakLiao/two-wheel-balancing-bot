@@ -12,10 +12,8 @@
  */
 
 #include "mpu6050.h"
-#include "i2c.h"
-
-// MPU6050 I2C 地址（AD0 接地 = 0x68）
-#define MPU6050_ADDR  0x68 << 1
+#include "main.h"
+#include <math.h>
 
 // MPU6050 寄存器
 #define MPU6050_PWR_MGMT_1   0x6B
