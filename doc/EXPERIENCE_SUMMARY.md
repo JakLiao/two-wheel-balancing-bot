@@ -135,6 +135,20 @@ D:\Software\scripts\attach-dap.ps1
 
 ---
 
+## 六、WSL pio 命令冲突
+
+**问题：** 系统自带 `/usr/bin/pio`（v4.3.4）与 `~/.platformio/penv/bin/pio`（v6.1.19）冲突
+
+**修复：** `~/.local/bin/pio` 包装脚本（`~/.local/bin` 在 PATH 中优先于 `/usr/bin`）
+
+**验证：**
+```bash
+which pio     # /home/xiaoduo/.local/bin/pio
+pio --version # PlatformIO Core, version 6.1.19
+```
+
+---
+
 ## 四、Git 提交记录
 
 | 提交 | 内容 |
