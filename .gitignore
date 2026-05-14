@@ -42,7 +42,8 @@ Project/*.uvguix.*
 # ======================
 # Libraries (optional: comment out if you want to keep HAL/CMSIS in git)
 # ======================
-Libraries/             # 18MB STM32 HAL + CMSIS (comment if you want to track)
+# Libraries: STM32 HAL + CMSIS
+Libraries/
 
 # ======================
 # Generated / IDE files
