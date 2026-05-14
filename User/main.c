@@ -11,6 +11,7 @@
  */
 
 #include "main.h"
+#include "pin_map.h"
 #include "../APP/motor/app_motor.h"
 #include "../User/encoder/bsp_encoder.h"
 #include "../User/mpu6050/bsp_mpu6050.h"
