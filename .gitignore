@@ -29,3 +29,23 @@ Thumbs.db
 
 # Local overrides (keep platformio.ini, ignore local .ini)
 platformio.ini.local
+
+# ======================
+# Keil MDK Build Output
+# ======================
+Project/Objects/
+Project/Listings/
+
+# Keil GUI state (user-specific, do NOT track)
+Project/*.uvguix.*
+
+# ======================
+# Libraries (optional: comment out if you want to keep HAL/CMSIS in git)
+# ======================
+Libraries/             # 18MB STM32 HAL + CMSIS (comment if you want to track)
+
+# ======================
+# Generated / IDE files
+# ======================
+*.uvoptx
+*.uvprojx.user
