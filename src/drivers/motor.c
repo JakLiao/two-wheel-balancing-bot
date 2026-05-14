@@ -1,32 +1,35 @@
 /**
  * motor.c
  * TB6612FNG 电机驱动
- * PWM: TIM1_CH1(PA8)=左轮, TIM1_CH2(PA9)=右轮
- * 方向: AIN1/AIN2(左), BIN1/BIN2(右)
- * STBY: PB0 使能脚
+ *
+ * PWM: TIM3_CH3(PB0)=左轮, TIM3_CH4(PB1)=右轮
+ * 方向: AIN1/AIN2(PA4/PA5)=左, BIN1/BIN2(PA7/PB13)=右
+ * STBY: PB14（高电平=工作，低电平=待机）
+ *
+ * 更新：2026-05-14（TIM1→TIM3，引脚变更）
  */
 
 #include "motor.h"
 #include "pin_map.h"
 
-// TIM1 句柄（由 CubeMX 生成，在 main.c 中初始化）
-extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim3;  // TIM3: CH3=PB0(左), CH4=PB1(右)
 
 /**
  * 电机初始化
- * - TIM1 PWM 输出（72MHz / 720 = 100kHz PWM, 8bit 分辨率）
+ * - TIM3 PWM 输出（72MHz/72/100 = 10kHz）
  * - GPIO 方向控制
  * - STBY 使能
  */
 void Motor_Init(void)
 {
-    // STBY 使能（PB0 = 高电平使能）
+    // STBY 使能（PB14 = 高电平使能）
     HAL_GPIO_WritePin(TB6612_STBY_PORT, TB6612_STBY_PIN, GPIO_PIN_SET);
 
-    // 方向控制 GPIO 初始化（已在 MX_GPIO_Init 中配置）
-    // 启动 TIM1 PWM
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // 左轮 PA8
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2); // 右轮 PA9
+    // 方向控制 GPIO 已在 MX_GPIO_Init 中配置
+
+    // TIM3 PWM 启动：CH3=PB0(左轮), CH4=PB1(右轮)
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); // 左轮 PB0
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); // 右轮 PB1
 
     // 默认停止
     Motor_Stop();
@@ -35,7 +38,7 @@ void Motor_Init(void)
 /**
  * 设置单个电机速度
  * @param motor  MOTOR_L / MOTOR_R
- * @param speed  -720 ~ +720（PWM 计数周期，负值=反转）
+ * @param speed  -100 ~ +100（PWM 占空比，负值=反转）
  */
 void Motor_Set_Speed(motor_id_t motor, int16_t speed)
 {
@@ -44,13 +47,13 @@ void Motor_Set_Speed(motor_id_t motor, int16_t speed)
     uint16_t in1_pin, in2_pin;
 
     if (motor == MOTOR_L) {
-        pwm_channel = TIM_CHANNEL_1;
-        in1_port    = MOTOR_L_IN_PORT;  in1_pin = MOTOR_L_IN1_PIN;
-        in2_port    = MOTOR_L_IN_PORT;  in2_pin = MOTOR_L_IN2_PIN;
+        pwm_channel = TIM_CHANNEL_3;  // 左轮 PB0
+        in1_port    = MOTOR_L_IN_PORT;  in1_pin = MOTOR_L_IN1_PIN; // PA4
+        in2_port    = MOTOR_L_IN_PORT;  in2_pin = MOTOR_L_IN2_PIN; // PA5
     } else {
-        pwm_channel = TIM_CHANNEL_2;
-        in1_port    = MOTOR_R_IN_PORT;  in1_pin = MOTOR_R_IN1_PIN;
-        in2_port    = MOTOR_R_IN_PORT;  in2_pin = MOTOR_R_IN2_PIN;
+        pwm_channel = TIM_CHANNEL_4;  // 右轮 PB1
+        in1_port    = MOTOR_R_IN_PORT;  in1_pin = MOTOR_R_IN1_PIN; // PA7
+        in2_port    = MOTOR_R_IN_PORT;  in2_pin = MOTOR_R_IN2_PIN; // PB13
     }
 
     // 速度限幅
@@ -58,15 +61,15 @@ void Motor_Set_Speed(motor_id_t motor, int16_t speed)
     if (speed < -MOTOR_PWM_MAX) speed = -MOTOR_PWM_MAX;
 
     if (speed >= 0) {
-        // 正转：IN1=高, IN2=低
+        // 正转：IN1=HIGH, IN2=LOW
         HAL_GPIO_WritePin(in1_port, in1_pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(in2_port, in2_pin, GPIO_PIN_RESET);
-        __HAL_TIM_SET_COMPARE(&htim1, pwm_channel, (uint16_t)speed);
+        __HAL_TIM_SET_COMPARE(&htim3, pwm_channel, (uint16_t)speed);
     } else {
-        // 反转：IN1=低, IN2=高
+        // 反转：IN1=LOW, IN2=HIGH
         HAL_GPIO_WritePin(in1_port, in1_pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(in2_port, in2_pin, GPIO_PIN_SET);
-        __HAL_TIM_SET_COMPARE(&htim1, pwm_channel, (uint16_t)(-speed));
+        __HAL_TIM_SET_COMPARE(&htim3, pwm_channel, (uint16_t)(-speed));
     }
 }
 
@@ -81,8 +84,8 @@ void Motor_Stop(void)
 
 /**
  * 差速转向控制
- * @param left   左轮速度
- * @param right  右轮速度
+ * @param left   左轮速度（-100~100）
+ * @param right  右轮速度（-100~100）
  */
 void Motor_Differential(int16_t left, int16_t right)
 {

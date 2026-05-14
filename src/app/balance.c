@@ -149,8 +149,8 @@ void Balance_Speed_Control_10ms(void)
     float right_rpm = Encoder_Get_Right_Speed_rpm();
 
     // 转换为脉冲/s（简化处理）
-    left_speed  = (int16_t)(left_rpm  * ENCODER_TOTAL_PPR / 60.0f);
-    right_speed = (int16_t)(right_rpm * ENCODER_TOTAL_PPR / 60.0f);
+    left_speed  = (int16_t)(left_rpm  * ENCODER_TOTAL_PPR / 60.0f);  // rpm → pulse/s
+    right_speed = (int16_t)(right_rpm * ENCODER_TOTAL_PPR / 60.0f); // rpm → pulse/s
 
     // 积分累计（用于速度环消除稳态误差）
     int16_t avg_speed = (left_speed + right_speed) / 2;
