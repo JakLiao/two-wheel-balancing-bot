@@ -3,8 +3,8 @@
  * TB6612FNG 电机驱动
  *
  * PWM: TIM3_CH3(PB0)=左轮, TIM3_CH4(PB1)=右轮
- * 方向: AIN1/AIN2(PA4/PA5)=左, BIN1/BIN2(PA7/PB13)=右
- * STBY: PB14（高电平=工作，低电平=待机）
+ * 方向: AIN1/AIN2(PA4/PA5)=左, BIN1/BIN2(PB13/PB14)=右
+ * STBY: PA7（高电平=工作，低电平=待机）
  *
  * 更新：2026-05-14（TIM1→TIM3，引脚变更）
  */
@@ -22,7 +22,7 @@ extern TIM_HandleTypeDef htim3;  // TIM3: CH3=PB0(左), CH4=PB1(右)
  */
 void Motor_Init(void)
 {
-    // STBY 使能（PB14 = 高电平使能）
+    // STBY 使能（PA7 = 高电平使能）
     HAL_GPIO_WritePin(TB6612_STBY_PORT, TB6612_STBY_PIN, GPIO_PIN_SET);
 
     // 方向控制 GPIO 已在 MX_GPIO_Init 中配置
@@ -52,8 +52,8 @@ void Motor_Set_Speed(motor_id_t motor, int16_t speed)
         in2_port    = MOTOR_L_IN_PORT;  in2_pin = MOTOR_L_IN2_PIN; // PA5
     } else {
         pwm_channel = TIM_CHANNEL_4;  // 右轮 PB1
-        in1_port    = MOTOR_R_IN_PORT;  in1_pin = MOTOR_R_IN1_PIN; // PA7
-        in2_port    = MOTOR_R_IN_PORT;  in2_pin = MOTOR_R_IN2_PIN; // PB13
+        in1_port    = MOTOR_R_IN_PORT;  in1_pin = MOTOR_R_IN1_PIN; // PB13
+        in2_port    = MOTOR_R_IN_PORT;  in2_pin = MOTOR_R_IN2_PIN; // PB14
     }
 
     // 速度限幅

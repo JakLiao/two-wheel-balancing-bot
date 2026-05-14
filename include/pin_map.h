@@ -20,7 +20,7 @@
 // 一、TB6612FNG 电机驱动（直插扩展板 U6）
 // ============================================================
 // STBY：必须高电平才工作
-#define TB6612_STBY_PIN    GPIO_PIN_14      // PB14 ：驱动待机控制（高=工作，低=待机）
+#define TB6612_STBY_PIN    GPIO_PIN_7       // PA7  ：驱动待机控制（高=工作，低=待机）
 #define TB6612_STBY_PORT  GPIOB
 
 // 左电机 A 通道
@@ -33,8 +33,8 @@
 // 右电机 B 通道
 #define MOTOR_R_PWM_PIN   GPIO_PIN_1       // PB1  ：右 PWM（TIM3_CH4）
 #define MOTOR_R_PWM_PORT  GPIOB
-#define MOTOR_R_IN1_PIN   GPIO_PIN_7       // PA7  ：右方向 BIN1
-#define MOTOR_R_IN2_PIN   GPIO_PIN_13      // PB13 ：右方向 BIN2
+#define MOTOR_R_IN1_PIN   GPIO_PIN_13      // PB13 ：右方向 BIN1
+#define MOTOR_R_IN2_PIN   GPIO_PIN_14      // PB14 ：右方向 BIN2
 #define MOTOR_R_IN_PORT   GPIOB
 
 // ============================================================

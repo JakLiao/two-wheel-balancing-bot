@@ -41,12 +41,13 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    // --- PA7: 右电机方向 BIN1（推挽输出）---
+    // --- PA7: STBY（待机控制，高=工作）---
     GPIO_InitStruct.Pin   = GPIO_PIN_7;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET); // STBY 上拉高，工作状态
 
     // --- PB0/PB1: TIM3 PWM 输出（电机调速）---
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
@@ -54,20 +55,21 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Pull  = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    // --- PB4: TB6612 STBY（推挽输出，默认高）---
-    GPIO_InitStruct.Pin   = GPIO_PIN_14;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET); // STBY 上拉高，工作状态
-
-    // --- PB13: 右电机方向 BIN2（推挽输出）---
+    // --- PB13: 右电机方向 BIN1（推挽输出）---
     GPIO_InitStruct.Pin   = GPIO_PIN_13;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    // --- PB14: 右电机方向 BIN2（推挽输出）---
+    GPIO_InitStruct.Pin   = GPIO_PIN_14;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+
 
     // --- PA0/PA1: TIM2 编码器（左轮，PA0/PA1）---
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
