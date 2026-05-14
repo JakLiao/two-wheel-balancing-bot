@@ -65,7 +65,7 @@
 // ============================================================
 // 五、心跳 LED
 // ============================================================
-#define HEARTBEAT_LED_PIN  GPIO_PIN_13      // PC13 ：板载 LED（不与任何外设冲突）
-#define HEARTBEAT_LED_PORT GPIOC
+#define HEARTBEAT_LED_PIN  GPIO_PIN_6       // PA6  ：心跳 LED（不与任何外设冲突）
+#define HEARTBEAT_LED_PORT GPIOA
 
 #endif /* __PIN_MAP_H */

@@ -101,12 +101,12 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    // --- PC13: 板载 LED（心跳灯）---
-    GPIO_InitStruct.Pin   = GPIO_PIN_13;
+    // --- PA6: 心跳 LED（推挽输出）---
+    GPIO_InitStruct.Pin   = GPIO_PIN_6;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
 // ============================================================

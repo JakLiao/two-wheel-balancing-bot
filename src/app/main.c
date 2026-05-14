@@ -113,7 +113,7 @@ void SystemClock_Config(void)
 
 void Error_Handler(void)
 {
-    // PC13 LED 闪烁表示错误
+    // PA6 LED 闪烁表示错误
     while (1) {
         HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
         HAL_Delay(200);
