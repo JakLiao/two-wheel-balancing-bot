@@ -1,7 +1,7 @@
 /**
  * bluetooth.c
  * HC-05 蓝牙指令解析
- * 串口：USART3 (PB10=TX, PB11=RX)
+ * 串口：USART1 (PA9=TX, PA10=RX)
  * 波特率：9600（HC-05 默认）
  * 控制指令：
  *   F = 前进
@@ -16,7 +16,7 @@
 #include <string.h>
 
 // USART3 句柄
-extern UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart1;
 
 // 环形缓冲区
 #define BT_RX_BUF_SIZE  64
@@ -30,13 +30,13 @@ static volatile char bt_last_cmd = 'S';
 
 /**
  * 蓝牙初始化
- * - 配置 USART3 (9600, 8N1)
+ * - 配置 USART1 (9600, 8N1)
  * - 开启 RX 中断（接收到数据自动存入缓冲区）
  */
 void Bluetooth_Init(void)
 {
-    // USART3 中断使能（在 HAL_USART3_Init 中已配置）
-    __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
+    // USART1 中断使能（在 MX_USART1_Init 中已配置）
+    __HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 }
 
 /**
@@ -46,8 +46,8 @@ void Bluetooth_Init(void)
 void Bluetooth_UART_IRQHandler(void)
 {
     uint8_t data;
-    if (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_RXNE) != RESET) {
-        data = (uint8_t)(huart3.Instance->DR & 0xFF);
+    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE) != RESET) {
+        data = (uint8_t)(huart1.Instance->DR & 0xFF);
         uint16_t next = (bt_rx_head + 1) % BT_RX_BUF_SIZE;
         if (next != bt_rx_tail) {
             bt_rx_buf[bt_rx_head] = data;
@@ -117,5 +117,5 @@ void Bluetooth_Process(void)
  */
 void Bluetooth_Send_String(const char *str)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t*)str, strlen(str), 10);
+    HAL_UART_Transmit(&huart1, (uint8_t*)str, strlen(str), 10);
 }

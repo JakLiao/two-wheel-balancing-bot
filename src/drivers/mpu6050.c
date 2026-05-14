@@ -57,7 +57,7 @@ static float yaw_rate    = 0.0f;  // 偏航角速度（°/s）
 static void MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 {
     uint8_t data[2] = { reg, value };
-    HAL_I2C_Master_Transmit(&hi2c1, MPU6050_ADDR, data, 2, 10);
+    HAL_I2C_Master_Transmit(&hi2c2, MPU6050_ADDR, data, 2, 10);
 }
 
 /**
@@ -66,8 +66,8 @@ static void MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 static int16_t MPU6050_Read_2Bytes(uint8_t reg_high)
 {
     uint8_t buf[2];
-    HAL_I2C_Master_Transmit(&hi2c1, MPU6050_ADDR, &reg_high, 1, 10);
-    HAL_I2C_Master_Receive(&hi2c1, MPU6050_ADDR, buf, 2, 10);
+    HAL_I2C_Master_Transmit(&hi2c2, MPU6050_ADDR, &reg_high, 1, 10);
+    HAL_I2C_Master_Receive(&hi2c2, MPU6050_ADDR, buf, 2, 10);
     return (int16_t)((buf[0] << 8) | buf[1]);
 }
 

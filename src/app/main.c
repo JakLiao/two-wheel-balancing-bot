@@ -4,8 +4,10 @@
  * 开发环境：Keil MDK + STM32F103 HAL
  *
  * 更新：2026-05-14
- * TIM1 PWM → TIM3 PWM（PB0/PB1）
- * 心跳 LED → PC13（板载 LED）
+ * 更新：2026-05-14
+ * I2C2: MPU6050（PB10/PB11）
+ * TIM3: PWM（PB0/PB1）
+ * USART1: HC-05（PA9/PA10）
  */
 
 #include "main.h"
@@ -24,7 +26,7 @@ int main(void)
     MX_GPIO_Init();
 
     // ========== 早期 LED 测试：验证固件能跑到这里 ==========
-    // PC13 板载 LED 闪烁 3 次，如果看不到说明固件根本没运行
+    // PA6 心跳 LED 闪烁 3 次，如果看不到说明固件根本没运行
     for (int i = 0; i < 6; i++) {
         HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
         for (volatile uint32_t d = 0; d < 100000; d++);
@@ -35,8 +37,9 @@ int main(void)
     MX_TIM3_Init();    // PWM 电机（TIM3 CH3=PB0, CH4=PB1）
     MX_TIM2_Init();    // 左编码器（PA0/PA1）
     MX_TIM4_Init();    // 右编码器（PB6/PB7）
-    MX_I2C1_Init();    // MPU6050 I2C（PB8/PB9 Remap）
-    MX_USART3_Init();  // HC-05 蓝牙（PB10/PB11）
+    MX_I2C2_Init();    // MPU6050 I2C（PB10/PB11）
+    MX_USART1_Init();  // HC-05 蓝牙（PA9/PA10）
+    MX_EXTI8_Init();  // MPU6050 INT（PB8 下降沿）
 
     // 驱动层初始化
     Motor_Init();
