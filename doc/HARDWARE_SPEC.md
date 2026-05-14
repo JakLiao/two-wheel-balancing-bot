@@ -28,9 +28,9 @@ TB6612FNG 模块直插野火扩展板 U6 接口,模块与 MCU 的引脚对应关
 - PWMB → PB1(TIM3_CH4)
 - AIN1 → PA4
 - AIN2 → PA5
-- BIN1 → PA7
-- BIN2 → PB13
-- STBY → PB14
+- BIN1 → PB13
+- BIN2 → PB14
+- STBY → PA7
 
 **注意**:同一 GPIO 不能既做 I2C/中断又做电机方向或 PWM。
 
@@ -53,9 +53,9 @@ TB6612FNG 模块直插野火扩展板 U6 接口,模块与 MCU 的引脚对应关
 | AIN1 | PA4 | 左轮方向控制 1 |
 | AIN2 | PA5 | 左轮方向控制 2 |
 | PWMB | PB1（TIM3_CH4） | 右轮 PWM 调速 |
-| BIN1 | PA7 | 右轮方向控制 1 |
-| BIN2 | PB13 | 右轮方向控制 2 |
-| STBY | PB14 | 待机控制（高=工作，低=待机） |
+| BIN1 | PB13 | 右轮方向控制 1 |
+| BIN2 | PB14 | 右轮方向控制 2 |
+| STBY | PA7 | 待机控制（高=工作，低=待机） |
 | GND | GND | 共地 |
 | VM | 12V 锂电池正极 | 电机电源(TB6612 支持 2.5V~13.5V) |
 
