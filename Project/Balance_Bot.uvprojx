@@ -505,11 +505,6 @@
               <FilePath>..\User\usart\bsp_usart.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_i2c2.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\i2c\bsp_i2c2.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_encoder.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\encoder\bsp_encoder.c</FilePath>
@@ -523,11 +518,6 @@
               <FileName>bsp_bluetooth.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\bluetooth\bsp_bluetooth.c</FilePath>
-            </File>
-            <File>
-              <FileName>test_uart_monitor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\test\test_uart_monitor.c</FilePath>
             </File>
           </Files>
         </Group>

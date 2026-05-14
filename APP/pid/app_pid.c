@@ -4,7 +4,7 @@
  * 增量式 + 积分限幅 + 微分滤波
  */
 
-#include "pid.h"
+#include "app_pid.h"
 
 void PID_Init(PID_Controller *pid,
               float kp, float ki, float kd,

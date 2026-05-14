@@ -40,7 +40,7 @@ int main(void)
     MX_TIM4_Init();    // 右编码器（PB6/PB7）
     MX_I2C2_Init();    // MPU6050 I2C（PB10/PB11）
     MX_USART1_Init();  // HC-05 蓝牙（PA9/PA10）
-    MX_EXTI8_Init();  // MPU6050 INT（PB8 下降沿）
+    // MX_EXTI8_Init();  // 轮询模式：PB8 已作 GPIO 输入，暂不配置 EXTI
 
     // 驱动层初始化
     Motor_Init();

@@ -253,18 +253,12 @@ void USART1_IRQHandler(void)
 }
 
 // ============================================================
-// EXTI 初始化：PB8（MPU6050 INT 下降沿中断）
+// EXTI 初始化：PB8（轮询模式，保留引脚，暂不配置中断）
+// PB8 在 MX_GPIO_Init() 中已配置为输入，轮询模式下无需 EXTI
 // ============================================================
 void MX_EXTI8_Init(void)
 {
-    /* PB8 → EXTI8 */
-    __HAL_RCC_AFIO_CLK_ENABLE();
-    __HAL_AFIO_EXTI1_CONFIG(EXTI_LINE8);
-
-    EXTI_HandleTypeDef hexti;
-    hexti.Line = EXTI_LINE8;
-    HAL_EXTI_SetConfigLine(&hexti, EXTI_MODE_IT, EXTI_TRIGGER_FALLING);
-
-    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+    // 轮询模式：PB8 已作为 GPIO 输入配置在 MX_GPIO_Init() 中
+    // INT 引脚在轮询方式下直接读取，不使用 EXTI 中断
+    // 如后续需启用中断，恢复 EXTI 配置即可
 }

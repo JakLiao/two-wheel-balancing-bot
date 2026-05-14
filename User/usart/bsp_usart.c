@@ -17,6 +17,7 @@
   */
 	
 #include "bsp_usart.h"
+#include <stdio.h>
 
 UART_HandleTypeDef huart1;  // USART1 句柄
 

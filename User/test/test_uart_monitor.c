@@ -23,9 +23,9 @@
  */
 
 #include "main.h"
-#include "motor.h"
-#include "encoder.h"
-#include "mpu6050.h"
+#include "app_motor.h"
+#include "bsp_encoder.h"
+#include "bsp_mpu6050.h"
 #include "pin_map.h"
 
 /* ============================================================

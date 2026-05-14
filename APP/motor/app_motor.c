@@ -9,7 +9,7 @@
  * 更新：2026-05-14（TIM1→TIM3，引脚变更）
  */
 
-#include "motor.h"
+#include "app_motor.h"
 #include "../../User/pin_map.h"
 
 extern TIM_HandleTypeDef htim3;  // TIM3: CH3=PB0(左), CH4=PB1(右)
