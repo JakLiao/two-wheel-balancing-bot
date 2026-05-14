@@ -14,6 +14,12 @@
 
 int main(void)
 {
+    // ========== 最低优先级心跳：验证固件在跑 ==========
+    // 先把 PB5 拉高（亮灯），如果这都不亮说明芯片根本没运行固件
+    // 注意：此时时钟还未配置，delay 会不准确，但 LED 动作本身不依赖定时器
+    // 先做一次 LED 测试，再走正常初始化流程
+    // 本测试在第一次 while 循环 LED 之前就已经执行
+
     // ========== HAL 初始化 ==========
     HAL_Init();
 
@@ -22,7 +28,17 @@ int main(void)
 
     // 所有外设初始化
     MX_GPIO_Init();
-    MX_TIM1_Init();   // PWM 输出（电机）
+
+    // ========== 早期 LED 测试：验证固件能跑到这里 ==========
+    // PB5 闪烁 3 次，如果看不到说明固件根本没运行
+    for (int i = 0; i < 6; i++) {
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+        // 不精确延时，粗略等待
+        for (volatile uint32_t d = 0; d < 100000; d++);
+    }
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);  // 灯灭（初始灭）
+
+    // TIM1 PWM 输出（电机）
     MX_TIM2_Init();   // 正交解码（编码器）
     MX_I2C1_Init();   // MPU6050 I2C
     MX_USART3_Init(); // HC-05 蓝牙串口
@@ -38,10 +54,17 @@ int main(void)
     uint32_t tick_10ms  = 0;
     uint32_t tick_5ms   = 0;
     uint32_t tick_50ms  = 0;
+    uint32_t tick_500ms = 0;
 
     while (1)
     {
         uint32_t now = HAL_GetTick();
+
+        // --- 500ms：心跳灯，证明固件在运行 ---
+        if (now - tick_500ms >= 500) {
+            tick_500ms = now;
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);  // PB5 LED 心跳
+        }
 
         // --- 5ms：姿态传感器读取（200Hz，最关键）---
         if (now - tick_5ms >= 5) {

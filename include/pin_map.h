@@ -30,7 +30,9 @@
 #define MOTOR_R_IN_PORT    GPIOB
 
 // ============================================================
-// 二、编码器电机（TIM2 正交解码模式）
+// 二、编码器电机（正交解码：每路需独立 TIM 的 CH1+CH2）
+// 左：TIM2 PA0/PA1。右：本表为 PA2/PA3 占位；硬件上更推荐 TIM4 PB6/PB7
+// （STM32 编码器模式不可用同一 TIM 的 CH3+CH4 作为第二路 AB）。详见 doc/HARDWARE_SPEC.md
 // ============================================================
 #define ENCODER_L_A_PIN    GPIO_PIN_0       // PA0  ：左轮编码器 A（TIM2_CH1）
 #define ENCODER_L_B_PIN    GPIO_PIN_1       // PA1  ：左轮编码器 B（TIM2_CH2）
