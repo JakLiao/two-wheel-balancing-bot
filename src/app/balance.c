@@ -37,9 +37,9 @@
 #define BALANCE_KI          0.0f    // 积分（一般不用，平衡车不需要稳态误差消除）
 #define BALANCE_KD          20.0f   // 微分（越大越"阻尼"，抑制振荡）
 
-// 直立环输出限幅（PWM 最大值）
-#define BALANCE_OUT_MAX     600
-#define BALANCE_OUT_MIN    -600
+// 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
+#define BALANCE_OUT_MAX     100
+#define BALANCE_OUT_MIN    -100
 
 // 角度环输出限幅（期望倾角，度）
 #define SPEED_OUT_MAX       30.0f

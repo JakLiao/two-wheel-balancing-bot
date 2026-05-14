@@ -92,7 +92,7 @@ void MX_TIM1_Init(void)
 
     htim1.Instance               = TIM1;
     htim1.Init.Prescaler         = 72 - 1;  // 72MHz / 72 = 1MHz
-    htim1.Init.Period            = 720 - 1;  // 1MHz / 720 ≈ 1.39kHz PWM
+    htim1.Init.Period            = 99;        // 1MHz / 100 = 10kHz PWM（野火手册推荐）
     htim1.Init.CounterMode       = TIM_COUNTERMODE_UP;
     htim1.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
     htim1.Init.RepetitionCounter = 0;
