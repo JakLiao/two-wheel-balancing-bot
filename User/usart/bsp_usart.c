@@ -4,48 +4,18 @@
   * @author     embedfire
   * @version     V1.0
   * @date        2025
-  * @brief   		初始化串口并重定向printf函数到usart端口
+  * @brief   		USART1 MSP 初始化 + printf 重定向
   ******************************************************************************
   * @attention
-  *
-  * 实验平台  ：野火 STM32F103C8T6-STM32开发板 
-  * 论坛      ：http://www.firebbs.cn
-  * 官网      ：https://embedfire.com/
-  * 淘宝      ：https://yehuosm.tmall.com/
-  *
+  * 实验平台  ：野火 STM32F103C8T6-STM32开发板
   ******************************************************************************
   */
-	
+
 #include "bsp_usart.h"
 #include <stdio.h>
 
-UART_HandleTypeDef huart1;  // USART1 句柄
-
-
-/**
-  * @brief  初始化 USART1（波特率 115200，8N1，双向通信）
-  * @note   可用于 printf 重定向输出
-  * @retval 无
-  */
-void MX_USART1_UART_Init(void)
-{
-    // 设置 USART1 相关参数
-    huart1.Instance        = USART1;                   // USART1 外设
-    huart1.Init.BaudRate   = 115200;                   // 波特率设置
-    huart1.Init.WordLength = UART_WORDLENGTH_8B;       // 8 位数据位
-    huart1.Init.StopBits   = UART_STOPBITS_1;          // 1 位停止位
-    huart1.Init.Parity     = UART_PARITY_NONE;         // 无奇偶校验
-    huart1.Init.Mode       = UART_MODE_TX_RX;          // 打开发送和接收
-    huart1.Init.HwFlowCtl  = UART_HWCONTROL_NONE;      // 无硬件流控
-    huart1.Init.OverSampling = UART_OVERSAMPLING_16;   // 16 倍过采样
-
-    // 初始化 UART
-    if (HAL_UART_Init(&huart1) != HAL_OK)
-    {
-        Error_Handler(); // 初始化失败，进入错误处理函数
-    }
-}
-
+// huart1 的定义在 stm32_init.c，本文件仅引用
+extern UART_HandleTypeDef huart1;
 
 /**
   * @brief  USART1 外设底层初始化（由 HAL_UART_Init 自动调用）
@@ -66,18 +36,17 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
         // 3. 配置 USART1_TX（PA9）为复用推挽输出，高速
         GPIO_InitStruct.Pin   = GPIO_PIN_9;
-        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;              // 复用推挽输出
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;         // 高速
+        GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
         // 4. 配置 USART1_RX（PA10）为浮空输入
         GPIO_InitStruct.Pin  = GPIO_PIN_10;
-        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;               // 输入模式
-        GPIO_InitStruct.Pull = GPIO_NOPULL;                   // 无上拉/下拉
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     }
 }
-
 
 /**
   * @brief  UART MSP 反初始化（释放资源）
@@ -88,24 +57,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 {
     if (uartHandle->Instance == USART1)
     {
-        /*-------------------- 关闭外设时钟 --------------------*/
         __HAL_RCC_USART1_CLK_DISABLE();
-
-        /*-------------------- 释放 GPIO 引脚 --------------------*/
-        // PA9（USART1_TX）、PA10（USART1_RX）解除初始化
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9 | GPIO_PIN_10);
     }
 }
-
-/**
-  * @brief  重定向 printf 的输出到串口
-  * @param  ch 要发送的字符
-  * @param  f  文件指针（标准库要求的参数，一般不使用）
-  * @retval 返回发送的字符
-  */
-int fputc(int ch, FILE *f)
-{
-         HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-         return ch;
-}
-

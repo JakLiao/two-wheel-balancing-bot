@@ -10,10 +10,6 @@
  */
 
 #include "bsp_encoder.h"
-#include "stm32f1xx_hal.h"
-
-extern TIM_HandleTypeDef htim2;  // 左编码器：PA0/PA1
-extern TIM_HandleTypeDef htim4;  // 右编码器：PB6/PB7
 
 static volatile int32_t left_count  = 0;
 static volatile int32_t right_count = 0;
@@ -78,7 +74,7 @@ void Encoder_Update_Speed(void)
 /**
  * 获取左轮当前速度（rpm）
  */
-float Encoder_Get_Left_Speed_rpm(void)
+float Encoder_Get_Left_Speed_RPM(void)
 {
     return left_speed_rpm;
 }
@@ -86,7 +82,7 @@ float Encoder_Get_Left_Speed_rpm(void)
 /**
  * 获取右轮当前速度（rpm）
  */
-float Encoder_Get_Right_Speed_rpm(void)
+float Encoder_Get_Right_Speed_RPM(void)
 {
     return right_speed_rpm;
 }

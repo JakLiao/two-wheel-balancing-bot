@@ -222,14 +222,14 @@ void MX_I2C2_Init(void)
 }
 
 // ============================================================
-// USART1 初始化：HC-05 蓝牙（PA9=TX, PA10=RX，9600，8N1）
+// USART1 初始化：HC-05 蓝牙（PA9=TX, PA10=RX，115200，8N1）
 // ============================================================
 void MX_USART1_Init(void)
 {
     __HAL_RCC_USART1_CLK_ENABLE();
 
     huart1.Instance           = USART1;
-    huart1.Init.BaudRate    = 9600;
+    huart1.Init.BaudRate    = 115200;
     huart1.Init.WordLength  = UART_WORDLENGTH_8B;
     huart1.Init.StopBits    = UART_STOPBITS_1;
     huart1.Init.Parity      = UART_PARITY_NONE;

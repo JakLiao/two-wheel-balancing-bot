@@ -1,12 +1,13 @@
 /**
  * mpu6050.h
- * MPU6050 驱动接口
+ * MPU6050 姿态传感器驱动接口
  */
 
 #ifndef __MPU6050_H
 #define __MPU6050_H
 
 #include <stdint.h>
+#include "main.h"          // 提供 I2C_HandleTypeDef / hi2c2
 
 // I2C 地址（AD0 接地 = 0x68）
 #define MPU6050_ADDR  0x68

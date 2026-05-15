@@ -1,12 +1,13 @@
-#ifndef __BSP_USART_H__
-#define __BSP_USART_H__
+/**
+ * bsp_usart.h
+ * USART1 驱动接口
+ */
 
-#include "main.h"
+#ifndef __BSP_USART_H
+#define __BSP_USART_H
 
-extern UART_HandleTypeDef huart1;
-
+#include "main.h"          // 提供 UART_HandleTypeDef / huart1
 
 void MX_USART1_UART_Init(void);
 
-
-#endif /* __BSP_USART_H__ */
+#endif /* __BSP_USART_H */

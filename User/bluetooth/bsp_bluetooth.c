@@ -12,7 +12,6 @@
  */
 
 #include "bsp_bluetooth.h"
-#include "../main.h"
 #include <string.h>
 
 // USART3 句柄

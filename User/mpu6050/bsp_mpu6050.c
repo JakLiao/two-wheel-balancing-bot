@@ -12,7 +12,6 @@
  */
 
 #include "bsp_mpu6050.h"
-#include "../main.h"
 #include <math.h>
 
 // MPU6050 寄存器

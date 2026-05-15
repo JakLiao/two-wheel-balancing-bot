@@ -171,9 +171,69 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
+/******************************************************************************/
+/*            TIMEx Peripherals Interrupt Handlers                             */
+/******************************************************************************/
+
+/**
+  * @brief  This function handles TIM break interrupt.
+  */
+void TIM1_BRK_IRQHandler(void)
+{
+  HAL_TIMEx_BreakCallback(NULL);
+  HAL_TIM_IRQHandler(NULL);
+}
+
+/**
+  * @brief  This function handles TIM update interrupt.
+  */
+void TIM1_UP_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(NULL);
+}
+
+/**
+  * @brief  This function handles TIM trigger and commutation interrupts.
+  */
+void TIM1_TRG_COM_IRQHandler(void)
+{
+  HAL_TIMEx_CommutCallback(NULL);
+  HAL_TIM_IRQHandler(NULL);
+}
+
+/**
+  * @brief  TIM break callback (weak definition required by HAL)
+  */
+__weak void HAL_TIMEx_BreakCallback(TIM_HandleTypeDef *htim)
+{
+  (void)htim;
+}
+
+/**
+  * @brief  TIM commutation callback (weak definition required by HAL)
+  */
+__weak void HAL_TIMEx_CommutCallback(TIM_HandleTypeDef *htim)
+{
+  (void)htim;
+}
+
+// 定时器DMA互补传输 完成回调函数
+void TIMEx_DMACommutationCplt(DMA_HandleTypeDef *hdma)
+{
+  // 传输完成后无特殊需求，留空即可
+  (void)hdma;
+}
+
+// 定时器DMA互补传输 半完成回调函数
+void TIMEx_DMACommutationHalfCplt(DMA_HandleTypeDef *hdma)
+{
+  // 半完成回调，无需求留空即可
+  (void)hdma;
+}
+
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}

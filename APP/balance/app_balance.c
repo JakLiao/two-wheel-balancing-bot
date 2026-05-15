@@ -145,8 +145,8 @@ void Balance_Speed_Control_10ms(void)
     // 实际工程中在 Encoder_Update_Speed() 里计算
     Encoder_Update_Speed();
 
-    float left_rpm  = Encoder_Get_Left_Speed_rpm();
-    float right_rpm = Encoder_Get_Right_Speed_rpm();
+    float left_rpm  = Encoder_Get_Left_Speed_RPM();
+    float right_rpm = Encoder_Get_Right_Speed_RPM();
 
     // 转换为脉冲/s（简化处理）
     left_speed  = (int16_t)(left_rpm  * ENCODER_TOTAL_PPR / 60.0f);  // rpm → pulse/s
