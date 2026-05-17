@@ -60,16 +60,21 @@ void Motor_Set_Speed(motor_id_t motor, int16_t speed)
     if (speed >  MOTOR_PWM_MAX) speed =  MOTOR_PWM_MAX;
     if (speed < -MOTOR_PWM_MAX) speed = -MOTOR_PWM_MAX;
 
-    if (speed >= 0) {
+    if (speed > 0) {
         // 正转：IN1=HIGH, IN2=LOW
         HAL_GPIO_WritePin(in1_port, in1_pin, GPIO_PIN_SET);
         HAL_GPIO_WritePin(in2_port, in2_pin, GPIO_PIN_RESET);
         __HAL_TIM_SET_COMPARE(&htim3, pwm_channel, (uint16_t)speed);
-    } else {
+    } else if (speed < 0) {
         // 反转：IN1=LOW, IN2=HIGH
         HAL_GPIO_WritePin(in1_port, in1_pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(in2_port, in2_pin, GPIO_PIN_SET);
         __HAL_TIM_SET_COMPARE(&htim3, pwm_channel, (uint16_t)(-speed));
+    } else {
+        // 刹车：IN1=LOW, IN2=LOW + PWM=0（彻底停止）
+        HAL_GPIO_WritePin(in1_port, in1_pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(in2_port, in2_pin, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim3, pwm_channel, 0);
     }
 }
 
