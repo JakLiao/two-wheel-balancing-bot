@@ -50,7 +50,7 @@ void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET); // 上拉高，工作状态
 
     // --- PA9/PA10: USART1 TX/RX（HC-05 蓝牙）---
-    GPIO_InitStruct.Pin   = GPIO_PIN_9 | GPIO_PIN_10;
+    GPIO_InitStruct.Pin   = GPIO_PIN_9 | GPIO_PIN_10;   // PA9=TX, PA10=RX
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -68,13 +68,6 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    // --- PB10/PB11: I2C2 SCL/SDA（MPU6050，开漏输出+上拉）---
-    GPIO_InitStruct.Pin   = GPIO_PIN_10 | GPIO_PIN_11;
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;     // I2C 需要上拉
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     // --- PB8: MPU6050 INT（外部中断输入，下降沿触发）---
@@ -203,22 +196,49 @@ void MX_TIM4_Init(void)
 }
 
 // ============================================================
+// I2C2 GPIO 配置（对齐野火 HAL_I2C_MspInit 架构）
+// ============================================================
+void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    if (i2cHandle->Instance == I2C2) {
+        /* 使能 GPIOB 时钟 */
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+
+        /** PB10 -> I2C2_SCL, PB11 -> I2C2_SDA
+          * 复用开漏模式（I2C 必须开漏）
+          * Pull = NOPULL：纯靠模块外部 2.2K 上拉电阻，与野火参考代码一致 */
+        GPIO_InitStruct.Pin   = GPIO_PIN_10 | GPIO_PIN_11;
+        GPIO_InitStruct.Mode  = GPIO_MODE_AF_OD;
+        GPIO_InitStruct.Pull  = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+        /* 使能 I2C2 外设时钟 */
+        __HAL_RCC_I2C2_CLK_ENABLE();
+    }
+}
+
+// ============================================================
 // I2C2 初始化：MPU6050（PB10=SCL, PB11=SDA，400kHz）
 // ============================================================
 void MX_I2C2_Init(void)
 {
-    /* I2C2 在 APB1 总线，使能时钟 */
-    __HAL_RCC_I2C2_CLK_ENABLE();
-
+    // 与野火参考代码 [34-1] 完全一致
     hi2c2.Instance             = I2C2;
-    hi2c2.Init.ClockSpeed     = 400000;        // 400kHz（Fast Mode）
-    hi2c2.Init.DutyCycle      = I2C_DUTYCYCLE_2; // 占空比 1:2
-    hi2c2.Init.OwnAddress1    = 0x00;           // 主设备，不使用从地址
+    hi2c2.Init.ClockSpeed     = 400000;        // 400kHz Fast Mode
+    hi2c2.Init.DutyCycle      = I2C_DUTYCYCLE_2;
+    hi2c2.Init.OwnAddress1    = 0x00;
     hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
     hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
     hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
     hi2c2.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
-    HAL_I2C_Init(&hi2c2);
+
+    // HAL_I2C_Init 内部会自动调用 HAL_I2C_MspInit
+    if (HAL_I2C_Init(&hi2c2) != HAL_OK) {
+        Error_Handler();
+    }
 }
 
 // ============================================================

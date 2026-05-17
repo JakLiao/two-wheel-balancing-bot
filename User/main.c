@@ -7,6 +7,7 @@
  */
 
 #include "main.h"
+#include <stdio.h>
 #include "pin_map.h"
 #include "../APP/motor/app_motor.h"
 #include "../User/encoder/bsp_encoder.h"
@@ -67,9 +68,14 @@ int main(void)
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
             // 打印姿态数据（每 500ms 一次）
-            printf("P=%.2f gx=%.1f\r\n",
+            int16_t ax, ay, az, gx, gy, gz;
+            MPU6050_Get_Raw_Accel(&ax, &ay, &az);
+            MPU6050_Get_Raw_Gyro(&gx, &gy, &gz);
+            printf("P=%.2f gx=%.1f | acc_pitch=%.2f | Ax=%d Ay=%d Az=%d Gx=%d Gy=%d Gz=%d\r\n",
                    MPU6050_Get_Pitch(),
-                   MPU6050_Get_Gyro_X());
+                   MPU6050_Get_Gyro_X(),
+                   MPU6050_Get_Accel_Pitch(),
+                   ax, ay, az, gx, gy, gz);
         }
 
         // --- 5ms：姿态传感器读取（200Hz）---
