@@ -261,7 +261,6 @@ void MPU6050_Read_Angles(void)
     gyro_x  = raw_gx - (int16_t)gyro_x_bias;
     gyro_y  = raw_gy - (int16_t)gyro_y_bias;
     gyro_z  = raw_gz - (int16_t)gyro_z_bias;
-    (void)gyro_y;
 
     // 加速度计俯仰角
     float accel_pitch = atan2f((float)accel_y, (float)accel_z) * 57.29578f;

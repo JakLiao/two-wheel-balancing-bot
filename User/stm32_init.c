@@ -118,7 +118,18 @@ void MX_TIM3_Init(void)
 {
     TIM_OC_InitTypeDef sConfigOC = {0};
 
+    // 重要：先使能 GPIO 时钟，再使能 TIM3 时钟
+    // PB0/PB1 复用功能必须在 TIM3 时钟使能之前配置好
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_TIM3_CLK_ENABLE();
+
+    // 配置 PB0/PB1 为 TIM3 PWM 输出口（确保在 Start 之前就正确配置）
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     htim3.Instance           = TIM3;
     htim3.Init.Prescaler   = 72 - 1;   // 72MHz / 72 = 1MHz
