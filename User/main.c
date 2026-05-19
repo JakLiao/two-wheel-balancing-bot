@@ -59,14 +59,41 @@ int main(void)
     uint32_t tick_50ms  = 0;
     uint32_t tick_500ms = 0;
 
+    // ========== 编码器调试用静态变量（500ms增量计算） ==========
+    // TDD 验证：Encoder_Get_Left_Count() 在 bsp_encoder.c 返回累计脉冲 left_count
+    static int32_t dbg_cnt_left_prev  = 0;   // 上一次 500ms 的累计计数
+    static int32_t dbg_cnt_right_prev = 0;
+
     while (1)
     {
         uint32_t now = HAL_GetTick();
 
-        // --- 500ms：心跳灯 + MPU6050 角度打印 ---
+        // --- 500ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
         if (now - tick_500ms >= 500) {
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
+
+            // [ENCODER DEBUG] 触发速度更新（保证 RPM 变量最新）
+            Encoder_Update_Speed();
+
+            // [ENCODER DEBUG] 读取累计计数
+            int32_t enc_l_total = Encoder_Get_Left_Count();
+            int32_t enc_r_total = Encoder_Get_Right_Count();
+
+            // [ENCODER DEBUG] 500ms 内增量（本次累计 - 上次累计）
+            int32_t cnt_l_delta = enc_l_total - dbg_cnt_left_prev;
+            int32_t cnt_r_delta = enc_r_total - dbg_cnt_right_prev;
+            dbg_cnt_left_prev  = enc_l_total;
+            dbg_cnt_right_prev = enc_r_total;
+
+            // [ENCODER DEBUG] 打印：累计计数 | 500ms增量 | RPM
+            float rpm_l = Encoder_Get_Left_Speed_RPM();
+            float rpm_r = Encoder_Get_Right_Speed_RPM();
+            printf("[ENC] L=%+ld  R=%+ld | CNT_L=%+ld  CNT_R=%+ld | RPM_L=%+.1f  RPM_R=%+.1f\r\n",
+                   enc_l_total, enc_r_total,
+                   cnt_l_delta, cnt_r_delta,
+                   rpm_l, rpm_r);
+
             // 打印姿态数据（每 500ms 一次）
             int16_t ax, ay, az, gx, gy, gz;
             MPU6050_Get_Raw_Accel(&ax, &ay, &az);
