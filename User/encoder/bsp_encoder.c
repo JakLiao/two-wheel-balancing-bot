@@ -9,6 +9,7 @@
  * 更新：2026-05-14（双 TIM 编码器：TIM2 + TIM4）
  */
 
+#include <stdio.h>
 #include "bsp_encoder.h"
 
 static volatile int32_t left_count  = 0;
@@ -125,4 +126,35 @@ float Encoder_Calc_Linear_Speed_mm_s(float wheel_radius_mm)
     float avg_rpm = (left_speed_rpm + right_speed_rpm) / 2.0f;
     // v = rpm * 2 * π * r / 60
     return avg_rpm * 2.0f * 3.14159f * wheel_radius_mm / 60.0f;
+}
+
+void Encoder_Get_Raw_Counter(uint16_t* left_cnt, uint16_t* right_cnt)
+{
+    *left_cnt  = (uint16_t)htim2.Instance->CNT;
+    *right_cnt = (uint16_t)htim4.Instance->CNT;
+}
+
+void Encoder_Debug_Print_Status(void)
+{
+    uint32_t tim2_sr = htim2.Instance->SR;
+    uint32_t tim4_sr = htim4.Instance->SR;
+    uint32_t tim2_cr1 = htim2.Instance->CR1;
+    uint32_t tim4_cr1 = htim4.Instance->CR1;
+    
+    printf("[ENC DEBUG] TIM2: CNT=%u, SR=0x%04X, CR1=0x%04X\r\n", 
+           (uint16_t)htim2.Instance->CNT, (uint16_t)tim2_sr, (uint16_t)tim2_cr1);
+    printf("[ENC DEBUG] TIM4: CNT=%u, SR=0x%04X, CR1=0x%04X\r\n", 
+           (uint16_t)htim4.Instance->CNT, (uint16_t)tim4_sr, (uint16_t)tim4_cr1);
+    
+    if (tim2_cr1 & TIM_CR1_CEN) {
+        printf("[ENC DEBUG] TIM2 is ENABLED\r\n");
+    } else {
+        printf("[ENC DEBUG] TIM2 is DISABLED !!!!\r\n");
+    }
+    
+    if (tim4_cr1 & TIM_CR1_CEN) {
+        printf("[ENC DEBUG] TIM4 is ENABLED\r\n");
+    } else {
+        printf("[ENC DEBUG] TIM4 is DISABLED !!!!\r\n");
+    }
 }

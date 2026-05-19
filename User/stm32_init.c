@@ -89,15 +89,15 @@ void MX_GPIO_Init(void)
 
     // --- PA0/PA1: TIM2 编码器（左轮）---
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;  // 复用输入
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;  
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // --- PB6/PB7: TIM4 编码器（右轮）---
     GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;  // 复用输入
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;  
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -170,11 +170,11 @@ void MX_TIM2_Init(void)
     sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_RISING;
     sEncoderConfig.IC1Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC1Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC1Filter         = 0;
+    sEncoderConfig.IC1Filter         = 0x0F;  // 增加滤波，防止噪声
     sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_RISING;
     sEncoderConfig.IC2Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC2Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC2Filter         = 0;
+    sEncoderConfig.IC2Filter         = 0x0F;  // 增加滤波，防止噪声
     HAL_TIM_Encoder_Init(&htim2, &sEncoderConfig);
 }
 
@@ -198,11 +198,11 @@ void MX_TIM4_Init(void)
     sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_RISING;
     sEncoderConfig.IC1Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC1Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC1Filter         = 0;
+    sEncoderConfig.IC1Filter         = 0x0F;  // 增加滤波，防止噪声
     sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_RISING;
     sEncoderConfig.IC2Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC2Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC2Filter         = 0;
+    sEncoderConfig.IC2Filter         = 0x0F;  // 增加滤波，防止噪声
     HAL_TIM_Encoder_Init(&htim4, &sEncoderConfig);
 }
 

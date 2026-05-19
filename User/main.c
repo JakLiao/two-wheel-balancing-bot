@@ -52,6 +52,9 @@ int main(void)
     printf("  PA9=TX, PA10=RX\r\n");
     printf("=========================================\r\n");
     printf("MPU6050 Pitch=%.2f deg\r\n", MPU6050_Get_Pitch());
+    
+    printf("\r\n--- Encoder Initial Status ---\r\n");
+    Encoder_Debug_Print_Status();
 
     // ========== 主循环 ==========
     uint32_t tick_10ms  = 0;
@@ -86,10 +89,13 @@ int main(void)
             dbg_cnt_left_prev  = enc_l_total;
             dbg_cnt_right_prev = enc_r_total;
 
-            // [ENCODER DEBUG] 打印：累计计数 | 500ms增量 | RPM
+            uint16_t raw_l, raw_r;
+            Encoder_Get_Raw_Counter(&raw_l, &raw_r);
+
             float rpm_l = Encoder_Get_Left_Speed_RPM();
             float rpm_r = Encoder_Get_Right_Speed_RPM();
-            printf("[ENC] L=%+ld  R=%+ld | CNT_L=%+ld  CNT_R=%+ld | RPM_L=%+.1f  RPM_R=%+.1f\r\n",
+            printf("[ENC] RAW_L=%u RAW_R=%u | TOTAL_L=%+ld TOTAL_R=%+ld | DELTA_L=%+ld DELTA_R=%+ld | RPM_L=%+.1f RPM_R=%+.1f\r\n",
+                   raw_l, raw_r,
                    enc_l_total, enc_r_total,
                    cnt_l_delta, cnt_r_delta,
                    rpm_l, rpm_r);

@@ -36,4 +36,8 @@ float Encoder_Get_Right_Speed_RPM(void);  // 右轮转速（rpm）
 
 float Encoder_Calc_Linear_Speed_mm_s(float wheel_radius_mm);
 
+void Encoder_Get_Raw_Counter(uint16_t* left_cnt, uint16_t* right_cnt);
+
+void Encoder_Debug_Print_Status(void);
+
 #endif /* __BSP_ENCODER_H */
