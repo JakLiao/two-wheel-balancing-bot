@@ -118,14 +118,18 @@ void Balance_Control_5ms(void)
     // 速度环输出 = 期望倾角（车往前倾=前进）
     float speed_output = 0.0f;
     if (balance_state == BALANCE_RUN) {
+        // Bug fix: dt 应为 0.01f（10ms 控制周期，100Hz）
         speed_output = PID_Calculate(&speed_pid,
                                       (float)target_speed,
                                       (float)(left_speed + right_speed) / 2.0f,
-                                      0.005f);
+                                      0.01f);
     }
 
     // ---- 直立环 PID（目标倾角由速度环输出决定）----
-    float final_output = PID_Calculate(&balance_pid, -speed_output, pitch, 0.005f);
+    // Bug fix: target/measurement 顺序调换
+    // error = pitch - (-speed_output) = pitch + speed_output
+    // pitch 为正（后倾）→ PWM 为正（轮子前转）→ 正确兜底
+    float final_output = PID_Calculate(&balance_pid, pitch, -speed_output, 0.005f);
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();
