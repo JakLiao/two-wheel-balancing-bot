@@ -56,8 +56,8 @@
 | TB6612 AIN2/BIN2 | PB4/PB9 | 方向控制 |
 | TB6612 STBY | PB0 | 使能 |
 | 左编码器 | PA0/PA1 | TIM2 编码器模式 CH1/CH2 |
-| 右编码器 | PB6/PB7（推荐） | TIM4 编码器模式 CH1/CH2；与 I2C 需 Remap 协调 |
-| MPU6050 SDA/SCL | PB7/PB6 或 PB9/PB8 | I2C1（视 Remap） |
+| 右编码器 | PB6/PB7（推荐） | TIM4 编码器模式 CH1/CH2 |
+| MPU6050 SDA/SCL | PB9/PB8 | I2C1 |
 | HC-05 | PB10/PB11 | USART3（交叉接 TXD/RXD） |
 | HC-SR04（可选） | PA15 / PB3 | Trig / Echo；须 SWD 仅 Serial Wire |
 
