@@ -88,19 +88,16 @@ void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET); // ADO 接地 → 0x68
 
     // --- PA0/PA1: TIM2 编码器（左轮）---
-    // 注意：JGA25-370 编码器输出为推挽式（自带弱上拉），
-    // 内部 GPIO PULLUP 会导致信号边沿变差，TIM 输入滤波（0x0F）误判为噪声丢弃边沿
-    // → 使用 GPIO_NOPULL，纯靠编码器自身输出强度决定电平
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;  // 复用输入（编码器模式从 GPIO 输入读取）
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // --- PB6/PB7: TIM4 编码器（右轮）---
     GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -170,14 +167,14 @@ void MX_TIM2_Init(void)
     htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
     sEncoderConfig.EncoderMode        = TIM_ENCODERMODE_TI12;
-    sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_BOTHEDGE;
     sEncoderConfig.IC1Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC1Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC1Filter         = 0x0F;  // 增加滤波，防止噪声
-    sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC1Filter         = 0x01;
+    sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_BOTHEDGE;
     sEncoderConfig.IC2Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC2Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC2Filter         = 0x0F;  // 增加滤波，防止噪声
+    sEncoderConfig.IC2Filter         = 0x01;
     HAL_TIM_Encoder_Init(&htim2, &sEncoderConfig);
 }
 
@@ -198,14 +195,14 @@ void MX_TIM4_Init(void)
     htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
     sEncoderConfig.EncoderMode        = TIM_ENCODERMODE_TI12;
-    sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC1Polarity       = TIM_ICPOLARITY_BOTHEDGE;
     sEncoderConfig.IC1Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC1Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC1Filter         = 0x0F;  // 增加滤波，防止噪声
-    sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_RISING;
+    sEncoderConfig.IC1Filter         = 0x01;
+    sEncoderConfig.IC2Polarity       = TIM_ICPOLARITY_BOTHEDGE;
     sEncoderConfig.IC2Selection      = TIM_ICSELECTION_DIRECTTI;
     sEncoderConfig.IC2Prescaler      = TIM_ICPSC_DIV1;
-    sEncoderConfig.IC2Filter         = 0x0F;  // 增加滤波，防止噪声
+    sEncoderConfig.IC2Filter         = 0x01;
     HAL_TIM_Encoder_Init(&htim4, &sEncoderConfig);
 }
 
