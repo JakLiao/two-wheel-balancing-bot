@@ -88,13 +88,26 @@ void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET); // ADO 接地 → 0x68
 
     // --- PA0/PA1: TIM2 编码器（左轮）---
-    // 注意：编码器A/B为有源推挽输出，GPIO PULLUP会导致低电平输出时
-    // 40K上拉被灌电流拉死 → 使用NOPULL，由编码器自己完全决定电平
+    // [已禁用 2026-05-20] TIM2 重映射到 PA15/PB3，原引脚释放
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    // --- PA15/PB3: TIM2 编码器（左轮）---
+    // TIM2 重映射后：CH1=PA15, CH2=PB3；PB3 是 JTDO，禁用 JTAG 后可用
+    GPIO_InitStruct.Pin   = GPIO_PIN_15;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin   = GPIO_PIN_3;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     // --- PB6/PB7: TIM4 编码器（右轮）---
     GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;

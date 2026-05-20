@@ -21,6 +21,15 @@ int main(void)
     // ========== HAL 初始化 ==========
     HAL_Init();
     SystemClock_Config();
+
+    // ========== TIM2 重映射（必须在 MX_GPIO_Init 之前）==========
+    // ① 使能 AFIO 时钟
+    __HAL_RCC_AFIO_CLK_ENABLE();
+    // ② TIM2 CH1/CH2 从 PA0/PA1 重映射到 PA15/PB3
+    __HAL_AFIO_REMAP_TIM2_PARTIAL_1();
+    // ③ 禁用 JTAG，释放 PA15/PB3/PB4（保留 SWD：PA13/PA14 用于烧录）
+    __HAL_AFIO_REMAP_SWJ_NOJTAG();
+
     MX_GPIO_Init();
 
     // ========== 早期 LED 测试：验证固件能跑到这里 ==========
