@@ -88,16 +88,18 @@ void MX_GPIO_Init(void)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET); // ADO 接地 → 0x68
 
     // --- PA0/PA1: TIM2 编码器（左轮）---
+    // 注意：编码器A/B为有源推挽输出，GPIO PULLUP会导致低电平输出时
+    // 40K上拉被灌电流拉死 → 使用NOPULL，由编码器自己完全决定电平
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // --- PB6/PB7: TIM4 编码器（右轮）---
     GPIO_InitStruct.Pin   = GPIO_PIN_6 | GPIO_PIN_7;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
