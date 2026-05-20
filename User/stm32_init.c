@@ -5,7 +5,7 @@
  * 更新：2026-05-14
  * - I2C2: MPU6050（PB10/PB11）
  * - TIM3: PWM 电机（PB0/PB1）
- * - TIM2: 左编码器（PA2/PA3，PA0已损坏改换）
+ * - TIM2: 左编码器（PA0/PA1）
  * - TIM4: 右编码器（PB6/PB7）
  * - USART1: HC-05 蓝牙（PA9/PA10）
  */
@@ -16,7 +16,7 @@
 // 全局外设句柄
 // ============================================================
 TIM_HandleTypeDef htim3;   // TIM3: PWM（PB0/PB1）
-TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA2/PA3）
+TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA0/PA1）
 TIM_HandleTypeDef htim4;   // TIM4: 右编码器（PB6/PB7）
 I2C_HandleTypeDef hi2c2;   // I2C2: MPU6050（PB10/PB11）
 UART_HandleTypeDef huart1;  // USART1: HC-05（PA9/PA10）
@@ -87,19 +87,13 @@ void MX_GPIO_Init(void)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET); // ADO 接地 → 0x68
 
-    // --- PA2/PA3: TIM2 编码器（左轮，PA0已损坏，改用PA2/PA3）---
-    // 注意：编码器A/B为有源推挽输出，GPIO PULLUP会导致低电平被拉死 → NOPULL
-    GPIO_InitStruct.Pin   = GPIO_PIN_2 | GPIO_PIN_3;
+    // --- PA0/PA1: TIM2 编码器（左轮）---
+    // 注意：编码器A/B为有源推挽输出，GPIO PULLUP会导致低电平输出时
+    // 40K上拉被灌电流拉死 → 使用NOPULL，由编码器自己完全决定电平
+    GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
     GPIO_InitStruct.Pull  = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    // --- PA0/PA1: 空闲引脚，保持输入避免悬空干扰 ---
-    GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
-    GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // --- PB6/PB7: TIM4 编码器（右轮）---
@@ -159,19 +153,13 @@ void MX_TIM3_Init(void)
 }
 
 // ============================================================
-// TIM2 初始化：正交解码（左编码器，PA2/PA3）
-// PA0已损坏 → 启用TIM2_FULL_REMAP：PA2=CH3, PA3=CH4
+// TIM2 初始化：正交解码（左编码器，PA0/PA1）
 // ============================================================
 void MX_TIM2_Init(void)
 {
     TIM_Encoder_InitTypeDef sEncoderConfig = {0};
 
     __HAL_RCC_TIM2_CLK_ENABLE();
-    __HAL_AFIO_CLK_ENABLE();  // TIM2 remap需要AFIO
-
-    // TIM2 Full Remap：PA2=CH3, PA3=CH4（原PA0/PA1失去TIM2功能）
-    // AFIO_MAPR_TIM2_REMAP = 11 (Full remap)
-    AFIO->MAPR = (AFIO->MAPR & ~AFIO_MAPR_TIM2_REMAP) | AFIO_MAPR_TIM2_REMAP_1 | AFIO_MAPR_TIM2_REMAP_0;
 
     htim2.Instance           = TIM2;
     htim2.Init.Prescaler   = 0;
