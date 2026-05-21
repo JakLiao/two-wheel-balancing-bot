@@ -2,7 +2,7 @@
  * bsp_led.c
  * LED 驱动实现
  *
- * 仅使用 PA6 心跳 LED（PA1/PA2/PA3 已移除，冲突 TIM2/USART2）
+ * 仅使用 PA6 心跳 LED（PA1/PA2/PA3 已移除）
  * 引脚定义来自 pin_map.h
  */
 

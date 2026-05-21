@@ -55,7 +55,7 @@
 | TB6612 AIN1/BIN1 | PB5/PB8 | 方向控制 |
 | TB6612 AIN2/BIN2 | PB4/PB9 | 方向控制 |
 | TB6612 STBY | PB0 | 使能 |
-| 左编码器 | PA0/PA1 | TIM2 编码器模式 CH1/CH2 |
+| 左编码器 | PB3/PA15 | TIM2 编码器模式 CH1/CH2 |
 | 右编码器 | PB6/PB7（推荐） | TIM4 编码器模式 CH1/CH2 |
 | MPU6050 SDA/SCL | PB9/PB8 | I2C1 |
 | HC-05 | PB10/PB11 | USART3（交叉接 TXD/RXD） |

@@ -27,7 +27,7 @@ two-wheel-balancing-bot/
 │   │   └── bluetooth.c/h     HC-05 指令（若引脚与 Cube 一致）
 │   ├── drivers/
 │   │   ├── mpu6050.c/h       I2C + 互补滤波
-│   │   ├── encoder.c/h       编码器（目标：TIM2 + TIM4 双路正交）
+│   │   ├── encoder.c/h       编码器（TIM2 + TIM4 双路正交，TIM2 已 remap 到 PA15/PB3）
 │   │   ├── motor.c/h         TB6612 + TIM1 PWM
 │   │   └── ...
 │   └── middleware/

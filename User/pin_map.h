@@ -34,11 +34,11 @@
 
 // ============================================================
 // 二、编码器（正交解码：两路独立定时器）
-// 左：TIM2 PA0/PA1。右：TIM4 PB6/PB7
+// 左：TIM2 PA15/PB3（TIM2 重映射后）。右：TIM4 PB6/PB7
 // ============================================================
 #define ENCODER_L_PORT     GPIOA
-#define ENCODER_L_A_PIN    GPIO_PIN_0        // PA0：左 TIM2_CH1
-#define ENCODER_L_B_PIN    GPIO_PIN_1        // PA1：左 TIM2_CH2
+#define ENCODER_L_A_PIN    GPIO_PIN_15       // PA15：左 TIM2_CH1（TIM2 重映射后）
+#define ENCODER_L_B_PIN    GPIO_PIN_3        // PB3：左 TIM2_CH2（TIM2 重映射后，JTAG 禁用后释放）
 
 #define ENCODER_R_PORT     GPIOB
 #define ENCODER_R_A_PIN    GPIO_PIN_6        // PB6：右 TIM4_CH1

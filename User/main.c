@@ -41,7 +41,7 @@ int main(void)
 
     // 外设初始化
     MX_TIM3_Init();    // PWM 电机（TIM3 CH3=PB0, CH4=PB1）
-    MX_TIM2_Init();    // 左编码器（PA0/PA1）
+    MX_TIM2_Init();    // 左编码器（PA15/PB3，TIM2 重映射后）
     MX_TIM4_Init();    // 右编码器（PB6/PB7）
     MX_I2C2_Init();    // MPU6050 I2C（PB10/PB11）
     MX_USART1_Init();  // HC-05 蓝牙（PA9/PA10）

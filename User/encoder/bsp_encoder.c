@@ -3,7 +3,7 @@
  * 编码器测速驱动
  * JGA25-370 12V 减速比 20.4:1，每转约 224 脉冲（电机侧）× 4 倍频 = 896 脉冲/轮转
  *
- * 左编码器：TIM2（PA0/PA1）
+ * 左编码器：TIM2（PA15/PB3，TIM2 重映射后）
  * 右编码器：TIM4（PB6/PB7）
  *
  * 更新：2026-05-14（双 TIM 编码器：TIM2 + TIM4）
@@ -26,7 +26,7 @@ static int16_t last_right_count = 0;
  */
 void Encoder_Init(void)
 {
-    // TIM2：左编码器 PA0/PA1
+    // TIM2：左编码器 PA15/PB3（TIM2 重映射后）
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_1 | TIM_CHANNEL_2);
     __HAL_TIM_SET_COUNTER(&htim2, 0);
 

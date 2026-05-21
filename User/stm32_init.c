@@ -5,7 +5,7 @@
  * 更新：2026-05-14
  * - I2C2: MPU6050（PB10/PB11）
  * - TIM3: PWM 电机（PB0/PB1）
- * - TIM2: 左编码器（PA0/PA1）
+ * - TIM2: 左编码器（PA15/PB3，TIM2 重映射后）
  * - TIM4: 右编码器（PB6/PB7）
  * - USART1: HC-05 蓝牙（PA9/PA10）
  */
@@ -16,7 +16,7 @@
 // 全局外设句柄
 // ============================================================
 TIM_HandleTypeDef htim3;   // TIM3: PWM（PB0/PB1）
-TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA0/PA1）
+TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA15/PB3，TIM2 重映射后）
 TIM_HandleTypeDef htim4;   // TIM4: 右编码器（PB6/PB7）
 I2C_HandleTypeDef hi2c2;   // I2C2: MPU6050（PB10/PB11）
 UART_HandleTypeDef huart1;  // USART1: HC-05（PA9/PA10）
@@ -87,15 +87,7 @@ void MX_GPIO_Init(void)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET); // ADO 接地 → 0x68
 
-    // --- PA0/PA1: TIM2 编码器（左轮）---
-    // [已禁用 2026-05-20] TIM2 重映射到 PA15/PB3，原引脚释放
-    GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    // --- PA15/PB3: TIM2 编码器（左轮）---
+    // --- PA15/PB3: TIM2 编码器（左轮，TIM2 重映射后）---
     // TIM2 重映射后：CH1=PA15, CH2=PB3；PB3 是 JTDO，禁用 JTAG 后可用
     GPIO_InitStruct.Pin   = GPIO_PIN_15;
     GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
@@ -166,7 +158,7 @@ void MX_TIM3_Init(void)
 }
 
 // ============================================================
-// TIM2 初始化：正交解码（左编码器，PA0/PA1）
+// TIM2 初始化：正交解码（左编码器，PA15/PB3）
 // ============================================================
 void MX_TIM2_Init(void)
 {

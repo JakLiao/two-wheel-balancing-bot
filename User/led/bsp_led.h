@@ -3,7 +3,6 @@
  * LED 驱动接口
  *
  * 注意：仅使用 PA6（心跳 LED），PA1/PA2/PA3 已移除
- * 原因：PA1 与 TIM2_CH2（编码器左轮）冲突，PA2/PA3 与 USART2 冲突
  *
  * 引脚定义在 pin_map.h（HEARTBEAT_LED_PORT / HEARTBEAT_LED_PIN）
  */
