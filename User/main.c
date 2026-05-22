@@ -80,8 +80,8 @@ int main(void)
     {
         uint32_t now = HAL_GetTick();
 
-        // --- 500ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
-        if (now - tick_500ms >= 500) {
+        // --- 1000ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
+        if (now - tick_500ms >= 1000) {
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
@@ -109,7 +109,7 @@ int main(void)
                    cnt_l_delta, cnt_r_delta,
                    rpm_l, rpm_r);
 
-            // 打印姿态数据（每 500ms 一次）
+            // 打印姿态数据
             int16_t ax, ay, az, gx, gy, gz;
             MPU6050_Get_Raw_Accel(&ax, &ay, &az);
             MPU6050_Get_Raw_Gyro(&gx, &gy, &gz);

@@ -66,7 +66,7 @@ static uint8_t s_dev_addr = 0;
 static HAL_StatusTypeDef MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 {
     uint8_t data[2] = { reg, value };
-    return HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, data, 2, 1000);
+    return HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, data, 2, 5);
 }
 
 /**
@@ -75,11 +75,11 @@ static HAL_StatusTypeDef MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 static uint8_t MPU6050_Read_Reg(uint8_t reg)
 {
     uint8_t data = 0;
-    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &reg, 1, 1000) != HAL_OK) {
+    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &reg, 1, 5) != HAL_OK) {
         printf("[MPU6050] I2C TX error during read_reg 0x%02X\r\n", reg);
         return 0xFF;
     }
-    if (HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, &data, 1, 1000) != HAL_OK) {
+    if (HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, &data, 1, 5) != HAL_OK) {
         printf("[MPU6050] I2C RX error during read_reg 0x%02X\r\n", reg);
         return 0xFF;
     }
@@ -91,10 +91,10 @@ static uint8_t MPU6050_Read_Reg(uint8_t reg)
  */
 static HAL_StatusTypeDef MPU6050_Read_Buffer(uint8_t start_reg, uint8_t *buf, uint16_t len)
 {
-    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &start_reg, 1, 1000) != HAL_OK) {
+    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &start_reg, 1, 5) != HAL_OK) {
         return HAL_ERROR;
     }
-    return HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, buf, len, 1000);
+    return HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, buf, len, 5);
 }
 
 /**
@@ -220,7 +220,13 @@ void MPU6050_Read_Angles(void)
 {
     uint8_t buf[14];
 
-    if (MPU6050_Read_Buffer(MPU6050_ACCEL_XOUT_H, buf, 14) != HAL_OK) {
+    // 处理 I2C 超时或错误：直接返回，跳过本帧
+    // 保留上次有效角度，不更新
+    HAL_StatusTypeDef ret = MPU6050_Read_Buffer(MPU6050_ACCEL_XOUT_H, buf, 14);
+    if (ret != HAL_OK) {
+        // I2C 失败：直接 return，跳过本帧
+        // 校准计数依赖于本函数被调用足够多次，失败帧不增加 cal_count
+        // 只会让校准过程稍慢一点，不影响正确性
         return;
     }
 
