@@ -480,11 +480,6 @@
               <FilePath>..\User\pin_map.h</FilePath>
             </File>
             <File>
-              <FileName>printf_redirect.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\printf_redirect.c</FilePath>
-            </File>
-            <File>
               <FileName>stm32_init.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\stm32_init.c</FilePath>

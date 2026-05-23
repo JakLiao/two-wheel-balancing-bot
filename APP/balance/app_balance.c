@@ -33,9 +33,9 @@
 
 // 直立环参数（核心！）
 // 调参口诀：P 让车立住，I 消除稳态误差，D 抑制振荡
-#define BALANCE_KP          50.0f   // 比例（越大越"硬"，太大会抖）
+#define BALANCE_KP          60.0f   // 比例（越大越"硬"，太大会抖）
 #define BALANCE_KI          0.0f    // 积分（一般不用，平衡车不需要稳态误差消除）
-#define BALANCE_KD          20.0f   // 微分（越大越"阻尼"，抑制振荡）
+#define BALANCE_KD          1.0f   // 微分（越大越"阻尼"，抑制振荡）
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -126,10 +126,17 @@ void Balance_Control_5ms(void)
     }
 
     // ---- 直立环 PID（目标倾角由速度环输出决定）----
-    // Bug fix: target/measurement 顺序调换
-    // error = pitch - (-speed_output) = pitch + speed_output
-    // pitch 为正（后倾）→ PWM 为正（轮子前转）→ 正确兜底
-    float final_output = PID_Calculate(&balance_pid, pitch, -speed_output, 0.005f);
+    // 速度环输出 = 期望倾角（度）
+    // 期望前进（speed_output > 0）→ 期望前倾 → target_angle 为负
+    float target_angle = -speed_output;
+
+    // 直立环：目标是让 pitch 跟踪 target_angle
+    // error = target_angle - pitch
+    // 后仰 pitch=+5，期望前进 speed_output=+10:
+    //   target_angle = -10, error = -10 - 5 = -15 → 电机正转纠正后仰 ✅
+    // 前倾 pitch=-5，期望前进 speed_output=+10:
+    //   target_angle = -10, error = -10 - (-5) = -5 → 电机正转但较弱 ✅
+    float final_output = PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();

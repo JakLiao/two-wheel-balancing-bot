@@ -20,6 +20,7 @@ TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA15/PB3，TIM2 重映射后�
 TIM_HandleTypeDef htim4;   // TIM4: 右编码器（PB6/PB7）
 I2C_HandleTypeDef hi2c2;   // I2C2: MPU6050（PB10/PB11）
 UART_HandleTypeDef huart1;  // USART1: HC-05（PA9/PA10）
+DMA_HandleTypeDef hdma_usart1_tx;  // USART1 TX DMA（消除 printf 阻塞）
 
 // ============================================================
 // GPIO 初始化
@@ -274,14 +275,33 @@ void MX_USART1_Init(void)
     huart1.Init.Mode        = UART_MODE_TX_RX;
     huart1.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
     huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-		if (HAL_UART_Init(&huart1) != HAL_OK)
-		{
-			Error_Handler();
-		}
+    if (HAL_UART_Init(&huart1) != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-    // USART1 中断使能（RX）
+    // ========== USART1 DMA TX 配置（消除 printf 阻塞）==========
+    // DMA1 Channel 4: USART1_TX
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    hdma_usart1_tx.Instance = DMA1_Channel4;
+    hdma_usart1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_usart1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart1_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.Mode = DMA_NORMAL;
+    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
+    HAL_DMA_Init(&hdma_usart1_tx);
+    // 关联 UART TX DMA 请求
+    __HAL_LINKDMA(&huart1, hdmatx, hdma_usart1_tx);
+
+    // USART1 中断使能（RX），先 enable USART 再 enable DMA（避免 init 过程中误触发）
     HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+    // DMA 中断优先级（低于 USART1 RX），最后 enable
+    HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 6, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 }
 
 // ============================================================

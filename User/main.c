@@ -80,8 +80,8 @@ int main(void)
     {
         uint32_t now = HAL_GetTick();
 
-        // --- 1000ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
-        if (now - tick_500ms >= 1000) {
+        // --- 500ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
+        if (now - tick_500ms >= 500) {
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
@@ -128,17 +128,17 @@ int main(void)
         }
 
         // --- 10ms：编码器测速（100Hz）---
-        if (now - tick_10ms >= 10) {
-            tick_10ms = now;
-            Encoder_Update_Speed();
-            Balance_Speed_Control_10ms();
-        }
+        // if (now - tick_10ms >= 10) {
+        //     tick_10ms = now;
+        //     Encoder_Update_Speed();
+        //     Balance_Speed_Control_10ms();
+        // }
 
         // --- 50ms：蓝牙指令处理（20Hz）---
-        if (now - tick_50ms >= 50) {
-            tick_50ms = now;
-            Bluetooth_Process();
-        }
+        // if (now - tick_50ms >= 50) {
+        //     tick_50ms = now;
+        //     Bluetooth_Process();
+        // }
 
         __WFI(); // 等待中断，降低功耗
     }

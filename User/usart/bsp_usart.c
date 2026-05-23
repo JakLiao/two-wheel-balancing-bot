@@ -1,21 +1,59 @@
 /**
-  ******************************************************************************
-  * @file       usart_com.c
-  * @author     embedfire
-  * @version     V1.0
-  * @date        2025
-  * @brief   		USART1 MSP 初始化 + printf 重定向
-  ******************************************************************************
-  * @attention
-  * 实验平台  ：野火 STM32F103C8T6-STM32开发板
-  ******************************************************************************
-  */
+ * bsp_usart.c
+ * USART1 MSP 初始化 + printf 重定向
+ * 
+ * 设计原则：
+ * - printf 用阻塞方式（可靠，初始化阶段也能用）
+ * - DMA 用于批量发送（由 BSP_USART_Transmit_DMA 接口对外暴露）
+ */
 
 #include "bsp_usart.h"
 #include <stdio.h>
 
-// huart1 的定义在 stm32_init.c，本文件仅引用
 extern UART_HandleTypeDef huart1;
+extern DMA_HandleTypeDef hdma_usart1_tx;
+
+// DMA 批量发送状态标志（0=空闲，1=发送中）
+static volatile uint8_t uart_tx_busy = 0;
+
+/**
+ * @brief  DMA 批量发送接口（供外部模块调用，如蓝牙批量发送）
+ * @param  data: 要发送的数据缓冲区
+ * @param  len:  数据长度
+ * @note   如果上一轮 DMA 还没发完，会等待最多 10ms 后直接放弃
+ */
+void BSP_USART_Transmit_DMA(const uint8_t *data, uint16_t len)
+{
+    uint32_t tick_start = HAL_GetTick();
+    while (uart_tx_busy) {
+        if (HAL_GetTick() - tick_start >= 10) return; // 超时放弃
+    }
+    uart_tx_busy = 1;
+    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)data, len);
+}
+
+/**
+ * @brief  UART DMA 发送完成回调
+ * @note   由 HAL_UART_TxCpltCallback 调用，标志 DMA 空闲
+ */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1) {
+        uart_tx_busy = 0;
+    }
+}
+
+/**
+ * @brief  重定向 printf 到 USART1（阻塞方式，可靠）
+ * @note   加 DMA 后系统卡死的根因就是这里用了 DMA 方式
+ *         阻塞方式简单可靠，初始化阶段也不会出问题
+ */
+int fputc(int ch, FILE *f)
+{
+    (void)f;
+    HAL_UART_Transmit(&huart1, (uint8_t*)&ch, 1, 10);
+    return ch;
+}
 
 /**
   * @brief  USART1 外设底层初始化（由 HAL_UART_Init 自动调用）
@@ -35,13 +73,13 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
         __HAL_RCC_GPIOA_CLK_ENABLE();
 
         // 3. 配置 USART1_TX（PA9）为复用推挽输出，高速
-        GPIO_InitStruct.Pin   = GPIO_PIN_9;
+        GPIO_InitStruct.Pin   = GPIO_PIN_9;  // USART1_TX
         GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
         // 4. 配置 USART1_RX（PA10）为浮空输入
-        GPIO_InitStruct.Pin  = GPIO_PIN_10;
+        GPIO_InitStruct.Pin  = GPIO_PIN_10;  // USART1_RX
         GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);

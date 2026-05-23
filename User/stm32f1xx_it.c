@@ -35,6 +35,7 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
@@ -229,6 +230,14 @@ void TIMEx_DMACommutationHalfCplt(DMA_HandleTypeDef *hdma)
 {
   // 半完成回调，无需求留空即可
   (void)hdma;
+}
+
+/**
+  * @brief  DMA1 Channel 4 中断处理（USART1_TX）
+  */
+void DMA1_Channel4_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
 /**
