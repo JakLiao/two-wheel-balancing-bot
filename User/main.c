@@ -6,9 +6,18 @@
  * 更新：2026-05-15 - 添加启动打印和 MPU6050 角度打印
  */
 
-#include "main.h"
+#include "main.h"                                                                 
 #include <stdio.h>
 #include "pin_map.h"
+
+// DWT CYCCNT 硬件计数器（ARM Cortex-M3 内置，72MHz 时钟，精度 ≈14ns）
+#define DWT_CYCCNT_ENABLE()  do { CoreDebug->DEMCR |= 0x01000000; DWT->CYCCNT = 0; DWT->CTRL |= 1; } while(0)
+#define DWT_GET()            DWT->CYCCNT
+#define CYCLES_TO_US(c)     ((c) / 72.0f)
+
+// ========== 全局开关：控制函数计时统计 ==========
+// 关闭后所有计时代码和打印统计被完全移除，零运行时开销
+#define CTRL_TIMING_ENABLED  0  // 1=开启统计，0=关闭
 #include "../APP/motor/app_motor.h"
 #include "../User/encoder/bsp_encoder.h"
 #include "../User/mpu6050/bsp_mpu6050.h"
@@ -21,6 +30,9 @@ int main(void)
     // ========== HAL 初始化 ==========
     HAL_Init();
     SystemClock_Config();
+
+    // ========== DWT CYCCNT 开启（用于微秒级函数计时）==========
+    DWT_CYCCNT_ENABLE();
 
     // ========== TIM2 重映射（必须在 MX_GPIO_Init 之前）==========
     // ① 使能 AFIO 时钟
@@ -70,6 +82,32 @@ int main(void)
     uint32_t tick_5ms   = 0;
     uint32_t tick_50ms  = 0;
     uint32_t tick_500ms = 0;
+#if CTRL_TIMING_ENABLED
+    uint32_t tick_ctrl  = 0;  // Balance_Control_5ms 实际间隔统计
+    uint32_t ctrl_min = 0xFFFFFFFF, ctrl_max = 0, ctrl_sum = 0, ctrl_cnt = 0;
+    uint32_t ctrl_all_min = 0xFFFFFFFF, ctrl_all_max = 0;  // 全程极值（不清零）
+
+    // 控制函数执行时间统计
+    typedef struct {
+        uint32_t cycles_mpu_sum;
+        uint32_t cycles_bal_sum;
+        uint32_t cycles_mpu_min;
+        uint32_t cycles_mpu_max;
+        uint32_t cycles_bal_min;
+        uint32_t cycles_bal_max;
+        uint32_t sample_cnt;
+        uint32_t all_mpu_min;
+        uint32_t all_mpu_max;
+        uint32_t all_bal_min;
+        uint32_t all_bal_max;
+    } ctrl_timing_t;
+    static ctrl_timing_t timing = {
+        .cycles_mpu_min = 0xFFFFFFFF, .cycles_bal_min = 0xFFFFFFFF,
+        .cycles_mpu_max = 0,          .cycles_bal_max = 0,
+        .all_mpu_min   = 0xFFFFFFFF, .all_bal_min   = 0xFFFFFFFF,
+        .all_mpu_max   = 0,           .all_bal_max   = 0
+    };
+#endif
 
     // ========== 编码器调试用静态变量（500ms增量计算） ==========
     // TDD 验证：Encoder_Get_Left_Count() 在 bsp_encoder.c 返回累计脉冲 left_count
@@ -80,11 +118,12 @@ int main(void)
     {
         uint32_t now = HAL_GetTick();
 
-        // --- 500ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
-        if (now - tick_500ms >= 500) {
+        // --- 2000ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
+        if (now - tick_500ms >= 2000) {
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
+#if CTRL_TIMING_ENABLED
             // [ENCODER DEBUG] 触发速度更新（保证 RPM 变量最新）
             Encoder_Update_Speed();
 
@@ -118,13 +157,83 @@ int main(void)
                    MPU6050_Get_Gyro_X(),
                    MPU6050_Get_Accel_Pitch(),
                    ax, ay, az, gx, gy, gz);
+
+            // 每 2000ms 打印一次统计
+            if (ctrl_cnt > 1) {
+                uint32_t window_avg = ctrl_sum / (ctrl_cnt - 1);
+                uint32_t window_min = ctrl_min;
+                uint32_t window_max = ctrl_max;
+                if (window_min < ctrl_all_min) ctrl_all_min = window_min;
+                if (window_max > ctrl_all_max) ctrl_all_max = window_max;
+
+                // 控制函数执行时间（窗口统计 + 全程极值）
+                uint32_t sc = timing.sample_cnt;
+                float mpu_avg_us = (sc > 0) ? (timing.cycles_mpu_sum / 72.0f / sc) : 0;
+                float bal_avg_us = (sc > 0) ? (timing.cycles_bal_sum / 72.0f / sc) : 0;
+
+                // 更新全程极值（窗口极值与历史极值比较）
+                if (timing.cycles_mpu_min < timing.all_mpu_min) timing.all_mpu_min = timing.cycles_mpu_min;
+                if (timing.cycles_mpu_max > timing.all_mpu_max) timing.all_mpu_max = timing.cycles_mpu_max;
+                if (timing.cycles_bal_min < timing.all_bal_min) timing.all_bal_min = timing.cycles_bal_min;
+                if (timing.cycles_bal_max > timing.all_bal_max) timing.all_bal_max = timing.cycles_bal_max;
+
+                printf("[CTRL] tick win: min=%lu max=%lu avg=%lu ms | all: min=%lu max=%lu\r\n",
+                       (unsigned long)window_min, (unsigned long)window_max,
+                       (unsigned long)window_avg,
+                       (unsigned long)ctrl_all_min, (unsigned long)ctrl_all_max);
+                printf("[CTRL] mpu: win_min=%.2f win_max=%.2f win_avg=%.2f us | all_min=%.2f all_max=%.2f us (%lu samples)\r\n",
+                       CYCLES_TO_US(timing.cycles_mpu_min), CYCLES_TO_US(timing.cycles_mpu_max), mpu_avg_us,
+                       CYCLES_TO_US(timing.all_mpu_min), CYCLES_TO_US(timing.all_mpu_max), (unsigned long)sc);
+                printf("[CTRL] bal: win_min=%.2f win_max=%.2f win_avg=%.2f us | all_min=%.2f all_max=%.2f us\r\n",
+                       CYCLES_TO_US(timing.cycles_bal_min), CYCLES_TO_US(timing.cycles_bal_max), bal_avg_us,
+                       CYCLES_TO_US(timing.all_bal_min), CYCLES_TO_US(timing.all_bal_max));
+
+                // 重置窗口统计
+                ctrl_min = 0xFFFFFFFF; ctrl_max = 0; ctrl_sum = 0; ctrl_cnt = 1;
+                timing.cycles_mpu_sum = 0; timing.cycles_bal_sum = 0;
+                timing.cycles_mpu_min = 0xFFFFFFFF; timing.cycles_bal_min = 0xFFFFFFFF;
+                timing.cycles_mpu_max = 0; timing.cycles_bal_max = 0;
+                timing.sample_cnt = 0;
+            }
+#endif
         }
 
         // --- 5ms：姿态传感器读取（200Hz）---
         if (now - tick_5ms >= 5) {
             tick_5ms = now;
+
+#if CTRL_TIMING_ENABLED
+            uint32_t delta = now - tick_ctrl;
+            tick_ctrl = now;
+            if (ctrl_cnt > 0) {
+                if (delta < ctrl_min) ctrl_min = delta;
+                if (delta > ctrl_max) ctrl_max = delta;
+                ctrl_sum += delta;
+                ctrl_cnt++;
+            } else {
+                ctrl_min = delta; ctrl_max = delta; ctrl_sum = delta; ctrl_cnt++;
+            }
+
+            uint32_t cyc0 = DWT_GET();
+#endif
             MPU6050_Read_Angles();
+#if CTRL_TIMING_ENABLED
+            uint32_t cyc1 = DWT_GET();
             Balance_Control_5ms();
+            uint32_t cyc2 = DWT_GET();
+            uint32_t c_mpu = cyc1 - cyc0;
+            uint32_t c_bal = cyc2 - cyc1;
+            timing.cycles_mpu_sum += c_mpu;
+            timing.cycles_bal_sum += c_bal;
+            if (c_mpu < timing.cycles_mpu_min) timing.cycles_mpu_min = c_mpu;
+            if (c_mpu > timing.cycles_mpu_max) timing.cycles_mpu_max = c_mpu;
+            if (c_bal < timing.cycles_bal_min) timing.cycles_bal_min = c_bal;
+            if (c_bal > timing.cycles_bal_max) timing.cycles_bal_max = c_bal;
+            timing.sample_cnt++;
+#else
+            Encoder_Update_Speed();
+            Balance_Control_5ms();
+#endif
         }
 
         // --- 10ms：编码器测速（100Hz）---

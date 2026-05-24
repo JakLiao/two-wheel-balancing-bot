@@ -20,6 +20,7 @@
  */
 
 #include "app_balance.h"
+#include <stdio.h>
 #include "../../User/mpu6050/bsp_mpu6050.h"
 #include "../../User/encoder/bsp_encoder.h"
 #include "../motor/app_motor.h"
@@ -30,12 +31,12 @@
 // ============================================================
 // PID 参数（野火标准版参考值，待实际整定）
 // ============================================================
-
+                                                
 // 直立环参数（核心！）
 // 调参口诀：P 让车立住，I 消除稳态误差，D 抑制振荡
-#define BALANCE_KP          60.0f   // 比例（越大越"硬"，太大会抖）
-#define BALANCE_KI          0.0f    // 积分（一般不用，平衡车不需要稳态误差消除）
-#define BALANCE_KD          1.0f   // 微分（越大越"阻尼"，抑制振荡）
+#define BALANCE_KP          10.0f    // 比例（越大响应越快，太大会抖）[调参建议：从0.3开始往上加]
+#define BALANCE_KI          0.0f   // 积分（一般不用，平衡车不需要稳态误差消除）
+#define BALANCE_KD          0.02f   // 微分（越大越"阻尼"，抑制振荡）[调参建议：从0.02开始往上加]
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -75,11 +76,33 @@ static volatile int32_t right_pulse_acc = 0;
 // 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
 
+// 机械平衡点偏置（传感器零位 vs 实际重心垂直位置的差异）
+// 启动时自动采样车身稳态角度作为补偿
+static float balance_angle_offset = 0.0f;
+
 // ============================================================
 // 初始化
 // ============================================================
 void Balance_Init(void)
 {
+    // ---- 采样机械平衡点偏置 ----
+    // 等待 MPU6050 校准完成
+    int wait = 0;
+    while (!MPU6050_Is_Calibrated() && wait < 500) {
+        HAL_Delay(10);
+        wait += 10;
+    }
+
+    // 静置采样：车身稳态时 pitch 均值即为平衡点偏置
+    #define ANGLE_CALIB_SAMPLES  400
+    float sum = 0.0f;
+    for (int i = 0; i < ANGLE_CALIB_SAMPLES; i++) {
+        sum += MPU6050_Get_Pitch();
+        HAL_Delay(5);
+    }
+    balance_angle_offset = sum / (float)ANGLE_CALIB_SAMPLES;
+    printf("[Balance] angle_offset=%.2f deg (avg of %d samples)\r\n", balance_angle_offset, ANGLE_CALIB_SAMPLES);
+
     PID_Init(&balance_pid,
              BALANCE_KP, BALANCE_KI, BALANCE_KD,
              BALANCE_OUT_MAX, BALANCE_OUT_MIN,
@@ -100,11 +123,11 @@ void Balance_Init(void)
 // dt = 0.005s
 void Balance_Control_5ms(void)
 {
-    // 读取姿态
-    float pitch = MPU6050_Get_Pitch();
+    // 读取姿态（减去机械平衡点偏置，使平衡时 pitch ≈ 0）
+    float pitch = MPU6050_Get_Pitch() - balance_angle_offset;
 
     // 倾角过大 → 停止保护（车倒了就停电机）
-    if (pitch >  45.0f || pitch < -45.0f) {
+    if (pitch >  33.0f || pitch < -33.0f) {
         Motor_Stop();
         PID_Reset(&balance_pid);
         PID_Reset(&speed_pid);
@@ -132,11 +155,10 @@ void Balance_Control_5ms(void)
 
     // 直立环：目标是让 pitch 跟踪 target_angle
     // error = target_angle - pitch
-    // 后仰 pitch=+5，期望前进 speed_output=+10:
-    //   target_angle = -10, error = -10 - 5 = -15 → 电机正转纠正后仰 ✅
-    // 前倾 pitch=-5，期望前进 speed_output=+10:
-    //   target_angle = -10, error = -10 - (-5) = -5 → 电机正转但较弱 ✅
-    float final_output = PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);
+    // 直立环纠正方向（方向取反后）：
+    // 车身后仰 pitch>0 → final_output>0 → 轮子向前转 → 纠正后仰
+    // 车身前倾 pitch<0 → final_output<0 → 轮子向后转 → 纠正前倾
+    float final_output = -PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);  // 方向取反
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();

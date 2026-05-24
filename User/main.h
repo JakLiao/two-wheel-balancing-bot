@@ -7,6 +7,7 @@
 #define __MAIN_H
 
 #include "stm32f1xx_hal.h"
+#include "core_cm3.h"
 
 // 外部外设句柄（在 stm32_init.c 中定义）
 extern TIM_HandleTypeDef htim3;   // TIM3: PWM（PB0/PB1）
