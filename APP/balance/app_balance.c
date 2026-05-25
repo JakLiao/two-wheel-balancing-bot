@@ -33,10 +33,13 @@
 // ============================================================
 
 // 直立环参数（核心！）
-// 调参口诀：P 让车立住，I 消除稳态误差，D 抑制振荡
-#define BALANCE_KP          8.0f    // 比例（越大响应越快，太大会抖）[调参建议：从0.3开始往上加]
-#define BALANCE_KI          0.0f   // 积分（一般不用，平衡车不需要稳态误差消除）
-#define BALANCE_KD          0.27f   // 微分（越大越"阻尼"，抑制振荡）[调参建议：从0.02开始往上加]
+// KP：比例增益，越大响应越快，太大会抖
+// KD：微分增益（作用于陀螺仪角速度，非数值微分）
+//     陀螺仪直读方式下 KD 的物理量纲 = KP × 秒
+//     典型比 KP/KD ≈ 5~10，当前 KP=8 → KD 建议 0.8~1.6
+#define BALANCE_KP          9.0f
+#define BALANCE_KI          0.0f
+#define BALANCE_KD          0.6f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -139,7 +142,6 @@ void Balance_Init(void)
 // ============================================================
 // 5ms 控制周期：直立环（最高优先级）
 // ============================================================
-// dt = 0.005s
 void Balance_Control_5ms(void)
 {
     // 读取姿态（减去机械平衡点偏置，使平衡时 pitch ≈ 0）
@@ -161,13 +163,10 @@ void Balance_Control_5ms(void)
     // 速度环输出 = 期望倾角（度）
     // 期望前进（speed_output > 0）→ 期望前倾 → target_angle 为负
     float target_angle = -speed_output;
+    float gyro_rate = MPU6050_Get_Gyro_X();
 
-    // 直立环：目标是让 pitch 跟踪 target_angle
-    // error = target_angle - pitch
-    // 直立环纠正方向：
-    // 车身后仰 pitch>0 → error<0 → PID输出<0 → 轮子向后转 → 重心前移 → 纠正后仰
-    // 车身前倾 pitch<0 → error>0 → PID输出>0 → 轮子向前转 → 重心后移 → 纠正前倾
-    float final_output = -PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);
+    float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_rate, 0.005f);
+    float final_output = -output;
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();
@@ -176,6 +175,11 @@ void Balance_Control_5ms(void)
 
     Motor_Differential(left_pwm, right_pwm);
 }
+
+// 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
+// 每周期积分 × 0.995，半衰期 ≈ 140 周期 = 1.4s
+// 效果：方向切换后积分残留快速消退，避免 target_angle 反向
+#define SPEED_INTEGRAL_DECAY  0.995f
 
 // ============================================================
 // 10ms 控制周期：速度环
@@ -198,6 +202,7 @@ void Balance_Speed_Control_10ms(void)
 
     // ---- 速度环 PID 计算 ----
     if (balance_state == BALANCE_RUN) {
+        speed_pid.integral *= SPEED_INTEGRAL_DECAY;
         speed_output = PID_Calculate(&speed_pid,
                                       (float)target_speed,
                                       (float)avg_speed,

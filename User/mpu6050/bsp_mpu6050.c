@@ -186,11 +186,13 @@ void MPU6050_Init(void)
     MPU6050_Write_Reg(MPU6050_PWR_MGMT_1, 0x00);
     HAL_Delay(10);
 
-    // 采样率分频：1kHz / (7+1) = 125Hz
-    MPU6050_Write_Reg(MPU6050_SMPLRT_DIV, 0x07);
+    // 采样率分频：1kHz / (0+1) = 1kHz（匹配 44Hz DLPF，保证每帧数据新鲜）
+    MPU6050_Write_Reg(MPU6050_SMPLRT_DIV, 0x00);
 
-    // DLPF 滤波器：5Hz 带宽（对应 1kHz 内部采样）
-    MPU6050_Write_Reg(MPU6050_CONFIG, 0x06);
+    // DLPF 滤波器：44Hz 带宽（对应 1kHz 内部采样）
+    // 0x06=5Hz 太低！平衡车振荡频率 2~5Hz，5Hz DLPF 在此频段相移 45°~90°，
+    // 导致 PID 纠正滞后，震荡递增。44Hz 在 5Hz 处相移仅 6.5°，可忽略。
+    MPU6050_Write_Reg(MPU6050_CONFIG, 0x03);
 
     // 加速度 ±2g
     MPU6050_Write_Reg(MPU6050_ACCEL_CONFIG, 0x00);
@@ -275,12 +277,10 @@ void MPU6050_Read_Angles(void)
     // 陀螺仪角速度
     float gyro_rate = (float)gyro_x / GYRO_SCALE;
 
-    // 互补滤波
-    static uint32_t last_tick = 0;
-    uint32_t now = HAL_GetTick();
-    float dt = (now - last_tick) / 1000.0f;
-    if (dt <= 0 || dt > 1.0f) dt = 0.008f;
-    last_tick = now;
+    // 互补滤波（使用固定 dt，避免 HAL_GetTick() 1ms 精度导致的 ±20% 陀螺积分抖动）
+    static uint8_t first_call = 1;
+    if (first_call) { first_call = 0; return; }
+    const float dt = 0.005f;
 
     pitch_angle = COMPLEMENTARY_ALPHA * (pitch_angle + gyro_rate * dt)
                 + (1.0f - COMPLEMENTARY_ALPHA) * accel_pitch;
