@@ -198,7 +198,7 @@ int main(void)
 #endif
         }
 
-        // --- 5ms：姿态传感器读取（200Hz）---
+        // --- 5ms：姿态传感器读取 + 直立环控制（200Hz）---
         if (now - tick_5ms >= 5) {
             tick_5ms = now;
 
@@ -231,12 +231,11 @@ int main(void)
             if (c_bal > timing.cycles_bal_max) timing.cycles_bal_max = c_bal;
             timing.sample_cnt++;
 #else
-            Encoder_Update_Speed();
             Balance_Control_5ms();
 #endif
         }
 
-        // --- 10ms：编码器测速（100Hz）---
+        // --- 10ms：编码器测速 + 速度环控制（100Hz）---
         // if (now - tick_10ms >= 10) {
         //     tick_10ms = now;
         //     Encoder_Update_Speed();

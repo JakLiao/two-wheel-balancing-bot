@@ -31,12 +31,12 @@
 // ============================================================
 // PID 参数（野火标准版参考值，待实际整定）
 // ============================================================
-                                                
+
 // 直立环参数（核心！）
 // 调参口诀：P 让车立住，I 消除稳态误差，D 抑制振荡
-#define BALANCE_KP          10.0f    // 比例（越大响应越快，太大会抖）[调参建议：从0.3开始往上加]
+#define BALANCE_KP          8.0f    // 比例（越大响应越快，太大会抖）[调参建议：从0.3开始往上加]
 #define BALANCE_KI          0.0f   // 积分（一般不用，平衡车不需要稳态误差消除）
-#define BALANCE_KD          0.02f   // 微分（越大越"阻尼"，抑制振荡）[调参建议：从0.02开始往上加]
+#define BALANCE_KD          0.27f   // 微分（越大越"阻尼"，抑制振荡）[调参建议：从0.02开始往上加]
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -65,9 +65,12 @@ static PID_Controller speed_pid;    // 速度环
 // 速度环期望值（来自蓝牙遥控）
 static volatile int16_t target_speed = 0;
 
-// 左右轮速度（脉冲/s，5ms 采样）
+// 左右轮速度（脉冲/s，10ms 采样）
 static volatile int16_t left_speed   = 0;
 static volatile int16_t right_speed  = 0;
+
+// 速度环输出（期望倾角），由 10ms 周期计算，5ms 周期使用
+static volatile float speed_output = 0.0f;
 
 // 累计脉冲（用于速度积分）
 static volatile int32_t left_pulse_acc  = 0;
@@ -86,18 +89,34 @@ static float balance_angle_offset = 0.0f;
 void Balance_Init(void)
 {
     // ---- 采样机械平衡点偏置 ----
-    // 等待 MPU6050 校准完成
+    // 等待 MPU6050 校准完成（必须主动调用 Read_Angles 才能完成校准）
     int wait = 0;
-    while (!MPU6050_Is_Calibrated() && wait < 500) {
+    const int MAX_WAIT_MS = 2000;  // 增加到 2 秒，确保能完成 100 次校准
+    while (!MPU6050_Is_Calibrated() && wait < MAX_WAIT_MS) {
+        MPU6050_Read_Angles();  // 主动读取，推进校准进程
         HAL_Delay(10);
         wait += 10;
+    }
+    if (!MPU6050_Is_Calibrated()) {
+        printf("[Balance] ERROR: MPU6050 calibration timeout after %dms! Using default 0 offset.\r\n", wait);
+        balance_angle_offset = 0.0f;
+        return;
+    }
+
+    // 校准完成后，需要再调用几次 Read_Angles 来稳定角度计算
+    // 因为互补滤波需要几次迭代才能收敛
+    for (int i = 0; i < 10; i++) {
+        MPU6050_Read_Angles();
+        HAL_Delay(5);
     }
 
     // 静置采样：车身稳态时 pitch 均值即为平衡点偏置
     #define ANGLE_CALIB_SAMPLES  400
     float sum = 0.0f;
     for (int i = 0; i < ANGLE_CALIB_SAMPLES; i++) {
-        sum += MPU6050_Get_Pitch();
+        MPU6050_Read_Angles();  // 先更新角度
+        float pitch = MPU6050_Get_Pitch();
+        sum += pitch;
         HAL_Delay(5);
     }
     balance_angle_offset = sum / (float)ANGLE_CALIB_SAMPLES;
@@ -127,26 +146,16 @@ void Balance_Control_5ms(void)
     float pitch = MPU6050_Get_Pitch() - balance_angle_offset;
 
     // 倾角过大 → 停止保护（车倒了就停电机）
-    if (pitch >  33.0f || pitch < -33.0f) {
+    if (pitch >  40.0f || pitch < -32.0f) {
         Motor_Stop();
         PID_Reset(&balance_pid);
         PID_Reset(&speed_pid);
         balance_state = BALANCE_IDLE;
+        speed_output = 0.0f;
         return;
     }
 
     balance_state = BALANCE_RUN;
-
-    // ---- 速度环输出叠加到期望角度 ----
-    // 速度环输出 = 期望倾角（车往前倾=前进）
-    float speed_output = 0.0f;
-    if (balance_state == BALANCE_RUN) {
-        // Bug fix: dt 应为 0.01f（10ms 控制周期，100Hz）
-        speed_output = PID_Calculate(&speed_pid,
-                                      (float)target_speed,
-                                      (float)(left_speed + right_speed) / 2.0f,
-                                      0.01f);
-    }
 
     // ---- 直立环 PID（目标倾角由速度环输出决定）----
     // 速度环输出 = 期望倾角（度）
@@ -155,10 +164,10 @@ void Balance_Control_5ms(void)
 
     // 直立环：目标是让 pitch 跟踪 target_angle
     // error = target_angle - pitch
-    // 直立环纠正方向（方向取反后）：
-    // 车身后仰 pitch>0 → final_output>0 → 轮子向前转 → 纠正后仰
-    // 车身前倾 pitch<0 → final_output<0 → 轮子向后转 → 纠正前倾
-    float final_output = -PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);  // 方向取反
+    // 直立环纠正方向：
+    // 车身后仰 pitch>0 → error<0 → PID输出<0 → 轮子向后转 → 重心前移 → 纠正后仰
+    // 车身前倾 pitch<0 → error>0 → PID输出>0 → 轮子向前转 → 重心后移 → 纠正前倾
+    float final_output = -PID_Calculate(&balance_pid, target_angle, pitch, 0.005f);
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();
@@ -174,10 +183,6 @@ void Balance_Control_5ms(void)
 // dt = 0.01s
 void Balance_Speed_Control_10ms(void)
 {
-    // 读取编码器（脉冲/10ms）
-    // 实际工程中在 Encoder_Update_Speed() 里计算
-    Encoder_Update_Speed();
-
     float left_rpm  = Encoder_Get_Left_Speed_RPM();
     float right_rpm = Encoder_Get_Right_Speed_RPM();
 
@@ -186,11 +191,20 @@ void Balance_Speed_Control_10ms(void)
     right_speed = (int16_t)(right_rpm * ENCODER_TOTAL_PPR / 60.0f); // rpm → pulse/s
 
     // 积分累计（用于速度环消除稳态误差）
-    int16_t avg_speed = (left_speed + right_speed) / 2;
-    (void)avg_speed; // speed_pid 内部积分处理
+    float avg_speed = (float)(left_speed + right_speed) / 2.0f;
 
     // 更新蓝牙指令期望速度
     target_speed = Bluetooth_Get_Target_Speed();
+
+    // ---- 速度环 PID 计算 ----
+    if (balance_state == BALANCE_RUN) {
+        speed_output = PID_Calculate(&speed_pid,
+                                      (float)target_speed,
+                                      (float)avg_speed,
+                                      0.01f);
+    } else {
+        speed_output = 0.0f;
+    }
 }
 
 // ============================================================
