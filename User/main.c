@@ -9,15 +9,15 @@
 #include "main.h"                                                                 
 #include <stdio.h>
 #include "pin_map.h"
+#include "../User/usart/bsp_usart.h"
 
 // DWT CYCCNT 硬件计数器（ARM Cortex-M3 内置，72MHz 时钟，精度 ≈14ns）
 #define DWT_CYCCNT_ENABLE()  do { CoreDebug->DEMCR |= 0x01000000; DWT->CYCCNT = 0; DWT->CTRL |= 1; } while(0)
 #define DWT_GET()            DWT->CYCCNT
-#define CYCLES_TO_US(c)     ((c) / 72.0f)
 
 // ========== 全局开关：控制函数计时统计 ==========
 // 关闭后所有计时代码和打印统计被完全移除，零运行时开销
-#define CTRL_TIMING_ENABLED  0  // 1=开启统计，0=关闭
+#define CTRL_TIMING_ENABLED  1  // 1=开启统计，0=关闭
 #include "../APP/motor/app_motor.h"
 #include "../User/encoder/bsp_encoder.h"
 #include "../User/mpu6050/bsp_mpu6050.h"
@@ -72,7 +72,7 @@ int main(void)
     printf("  SYSCLK: 72MHz, UART: 115200 8N1\r\n");
     printf("  PA9=TX, PA10=RX\r\n");
     printf("=========================================\r\n");
-    printf("MPU6050 Pitch=%.2f deg\r\n", MPU6050_Get_Pitch());
+    printf("MPU6050 Pitch=%ld deg\r\n", (long)(int32_t)(MPU6050_Get_Pitch()));
     
     printf("\r\n--- Encoder Initial Status ---\r\n");
     Encoder_Debug_Print_Status();
@@ -123,6 +123,13 @@ int main(void)
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
+            int32_t p_x100 = (int32_t)(MPU6050_Get_Pitch() * 100.0f);
+            int32_t gx_x10 = (int32_t)(MPU6050_Get_Gyro_X() * 10.0f);
+            printf("[HB] P=%ld.%02ld gx=%ld.%01ld cal=%d\r\n",
+                   (long)(p_x100 / 100), (long)abs(p_x100 % 100),
+                   (long)(gx_x10 / 10), (long)abs(gx_x10 % 10),
+                   MPU6050_Is_Calibrated());
+
 #if CTRL_TIMING_ENABLED
             // [ENCODER DEBUG] 触发速度更新（保证 RPM 变量最新）
             Encoder_Update_Speed();
@@ -142,20 +149,26 @@ int main(void)
 
             float rpm_l = Encoder_Get_Left_Speed_RPM();
             float rpm_r = Encoder_Get_Right_Speed_RPM();
-            printf("[ENC] RAW_L=%u RAW_R=%u | TOTAL_L=%+ld TOTAL_R=%+ld | DELTA_L=%+ld DELTA_R=%+ld | RPM_L=%+.1f RPM_R=%+.1f\r\n",
+            int32_t rpm_l_x10 = (int32_t)(rpm_l * 10.0f);
+            int32_t rpm_r_x10 = (int32_t)(rpm_r * 10.0f);
+            printf("[ENC] RAW_L=%u RAW_R=%u | TOTAL_L=%+ld TOTAL_R=%+ld | DELTA_L=%+ld DELTA_R=%+ld | RPM_L=%+ld.%01ld RPM_R=%+ld.%01ld\r\n",
                    raw_l, raw_r,
                    enc_l_total, enc_r_total,
                    cnt_l_delta, cnt_r_delta,
-                   rpm_l, rpm_r);
+                   (long)(rpm_l_x10 / 10), (long)abs(rpm_l_x10 % 10),
+                   (long)(rpm_r_x10 / 10), (long)abs(rpm_r_x10 % 10));
 
             // 打印姿态数据
             int16_t ax, ay, az, gx, gy, gz;
             MPU6050_Get_Raw_Accel(&ax, &ay, &az);
             MPU6050_Get_Raw_Gyro(&gx, &gy, &gz);
-            printf("P=%.2f gx=%.1f | acc_pitch=%.2f | Ax=%d Ay=%d Az=%d Gx=%d Gy=%d Gz=%d\r\n",
-                   MPU6050_Get_Pitch(),
-                   MPU6050_Get_Gyro_X(),
-                   MPU6050_Get_Accel_Pitch(),
+            int32_t p2_x100 = (int32_t)(MPU6050_Get_Pitch() * 100.0f);
+            int32_t gx2_x10 = (int32_t)(MPU6050_Get_Gyro_X() * 10.0f);
+            int32_t ap_x100 = (int32_t)(MPU6050_Get_Accel_Pitch() * 100.0f);
+            printf("P=%ld.%02ld gx=%ld.%01ld | ap=%ld.%02ld | A=%d %d %d G=%d %d %d\r\n",
+                   (long)(p2_x100 / 100), (long)abs(p2_x100 % 100),
+                   (long)(gx2_x10 / 10), (long)abs(gx2_x10 % 10),
+                   (long)(ap_x100 / 100), (long)abs(ap_x100 % 100),
                    ax, ay, az, gx, gy, gz);
 
             // 每 2000ms 打印一次统计
@@ -168,8 +181,16 @@ int main(void)
 
                 // 控制函数执行时间（窗口统计 + 全程极值）
                 uint32_t sc = timing.sample_cnt;
-                float mpu_avg_us = (sc > 0) ? (timing.cycles_mpu_sum / 72.0f / sc) : 0;
-                float bal_avg_us = (sc > 0) ? (timing.cycles_bal_sum / 72.0f / sc) : 0;
+                uint32_t mpu_avg_x10 = (sc > 0) ? (uint32_t)(timing.cycles_mpu_sum * 10 / 72 / sc) : 0;
+                uint32_t bal_avg_x10 = (sc > 0) ? (uint32_t)(timing.cycles_bal_sum * 10 / 72 / sc) : 0;
+                uint32_t mpu_min_x10 = (uint32_t)(timing.cycles_mpu_min * 10 / 72);
+                uint32_t mpu_max_x10 = (uint32_t)(timing.cycles_mpu_max * 10 / 72);
+                uint32_t bal_min_x10 = (uint32_t)(timing.cycles_bal_min * 10 / 72);
+                uint32_t bal_max_x10 = (uint32_t)(timing.cycles_bal_max * 10 / 72);
+                uint32_t all_mpu_min_x10 = (timing.all_mpu_min != 0xFFFFFFFF) ? (uint32_t)(timing.all_mpu_min * 10 / 72) : 0;
+                uint32_t all_mpu_max_x10 = (timing.all_mpu_max != 0) ? (uint32_t)(timing.all_mpu_max * 10 / 72) : 0;
+                uint32_t all_bal_min_x10 = (timing.all_bal_min != 0xFFFFFFFF) ? (uint32_t)(timing.all_bal_min * 10 / 72) : 0;
+                uint32_t all_bal_max_x10 = (timing.all_bal_max != 0) ? (uint32_t)(timing.all_bal_max * 10 / 72) : 0;
 
                 // 更新全程极值（窗口极值与历史极值比较）
                 if (timing.cycles_mpu_min < timing.all_mpu_min) timing.all_mpu_min = timing.cycles_mpu_min;
@@ -181,12 +202,19 @@ int main(void)
                        (unsigned long)window_min, (unsigned long)window_max,
                        (unsigned long)window_avg,
                        (unsigned long)ctrl_all_min, (unsigned long)ctrl_all_max);
-                printf("[CTRL] mpu: win_min=%.2f win_max=%.2f win_avg=%.2f us | all_min=%.2f all_max=%.2f us (%lu samples)\r\n",
-                       CYCLES_TO_US(timing.cycles_mpu_min), CYCLES_TO_US(timing.cycles_mpu_max), mpu_avg_us,
-                       CYCLES_TO_US(timing.all_mpu_min), CYCLES_TO_US(timing.all_mpu_max), (unsigned long)sc);
-                printf("[CTRL] bal: win_min=%.2f win_max=%.2f win_avg=%.2f us | all_min=%.2f all_max=%.2f us\r\n",
-                       CYCLES_TO_US(timing.cycles_bal_min), CYCLES_TO_US(timing.cycles_bal_max), bal_avg_us,
-                       CYCLES_TO_US(timing.all_bal_min), CYCLES_TO_US(timing.all_bal_max));
+                printf("[CTRL] mpu: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu (%lu)\r\n",
+                       (unsigned long)(mpu_min_x10 / 10), (unsigned long)(mpu_min_x10 % 10),
+                       (unsigned long)(mpu_max_x10 / 10), (unsigned long)(mpu_max_x10 % 10),
+                       (unsigned long)(mpu_avg_x10 / 10), (unsigned long)(mpu_avg_x10 % 10),
+                       (unsigned long)(all_mpu_min_x10 / 10), (unsigned long)(all_mpu_min_x10 % 10),
+                       (unsigned long)(all_mpu_max_x10 / 10), (unsigned long)(all_mpu_max_x10 % 10),
+                       (unsigned long)sc);
+                printf("[CTRL] bal: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu\r\n",
+                       (unsigned long)(bal_min_x10 / 10), (unsigned long)(bal_min_x10 % 10),
+                       (unsigned long)(bal_max_x10 / 10), (unsigned long)(bal_max_x10 % 10),
+                       (unsigned long)(bal_avg_x10 / 10), (unsigned long)(bal_avg_x10 % 10),
+                       (unsigned long)(all_bal_min_x10 / 10), (unsigned long)(all_bal_min_x10 % 10),
+                       (unsigned long)(all_bal_max_x10 / 10), (unsigned long)(all_bal_max_x10 % 10));
 
                 // 重置窗口统计
                 ctrl_min = 0xFFFFFFFF; ctrl_max = 0; ctrl_sum = 0; ctrl_cnt = 1;

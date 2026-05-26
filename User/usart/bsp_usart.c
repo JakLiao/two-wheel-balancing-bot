@@ -1,20 +1,24 @@
 /**
  * bsp_usart.c
- * USART1 MSP 初始化 + printf 重定向
- * 
- * 设计原则：
- * - printf 用阻塞方式（可靠，初始化阶段也能用）
- * - DMA 用于批量发送（由 BSP_USART_Transmit_DMA 接口对外暴露）
+ * USART1 驱动 + 非阻塞调试打印
+ *
+ * printf（fputc）: 阻塞方式，仅用于初始化阶段
+ * BSP_Debug_Print: DMA 非阻塞方式，用于运行时调试打印
  */
 
 #include "bsp_usart.h"
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 
 extern UART_HandleTypeDef huart1;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 
 // DMA 批量发送状态标志（0=空闲，1=发送中）
 static volatile uint8_t uart_tx_busy = 0;
+
+#define DEBUG_BUF_SIZE  128
+static char debug_buf[DEBUG_BUF_SIZE];
 
 /**
  * @brief  DMA 批量发送接口（供外部模块调用，如蓝牙批量发送）
@@ -40,6 +44,23 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1) {
         uart_tx_busy = 0;
+    }
+}
+
+void BSP_Debug_Print(const char *fmt, ...)
+{
+    if (uart_tx_busy) return;
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(debug_buf, DEBUG_BUF_SIZE, fmt, args);
+    va_end(args);
+
+    if (len > 0 && len < DEBUG_BUF_SIZE) {
+        HAL_StatusTypeDef ret = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)debug_buf, (uint16_t)len);
+        if (ret == HAL_OK) {
+            uart_tx_busy = 1;
+        }
     }
 }
 

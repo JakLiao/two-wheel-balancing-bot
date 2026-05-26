@@ -60,9 +60,13 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
+  __disable_irq();
+  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+  GPIOC->CRH = (GPIOC->CRH & ~(0x0F << 20)) | (0x03 << 20);
   while (1)
   {
+    GPIOC->ODR ^= (1 << 13);
+    for (volatile uint32_t i = 0; i < 200000; i++);
   }
 }
 

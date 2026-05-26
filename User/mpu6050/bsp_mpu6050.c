@@ -60,13 +60,78 @@ static uint8_t s_dev_addr = 0;
 
 #define CAL_SAMPLES 100
 
+#define I2C_TIMEOUT_MS      20
+#define I2C_RETRIES         1
+
+static void MPU6050_I2C_Peripheral_Reset(void)
+{
+    __HAL_I2C_DISABLE(&hi2c2);
+    hi2c2.Instance->CR1 |= I2C_CR1_SWRST;
+    for (volatile int d = 0; d < 100; d++);
+    hi2c2.Instance->CR1 &= ~I2C_CR1_SWRST;
+    __HAL_I2C_ENABLE(&hi2c2);
+    hi2c2.Instance->CR2 = 0;
+    hi2c2.Instance->OAR1 = 0;
+    hi2c2.Instance->OAR2 = 0;
+    hi2c2.Instance->CCR = 0;
+    hi2c2.Instance->TRISE = 0;
+    HAL_I2C_Init(&hi2c2);
+}
+
+static void MPU6050_I2C_Bus_Recover(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    __HAL_I2C_DISABLE(&hi2c2);
+
+    GPIO_InitStruct.Pin   = GPIO_PIN_10 | GPIO_PIN_11;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+
+    for (int i = 0; i < 16; i++) {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+        for (volatile int d = 0; d < 20; d++);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+        for (volatile int d = 0; d < 20; d++);
+        if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) == GPIO_PIN_SET) {
+            break;
+        }
+    }
+
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+    for (volatile int d = 0; d < 20; d++);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
+    for (volatile int d = 0; d < 20; d++);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+    for (volatile int d = 0; d < 20; d++);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
+    for (volatile int d = 0; d < 20; d++);
+
+    GPIO_InitStruct.Pin   = GPIO_PIN_10 | GPIO_PIN_11;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    __HAL_RCC_I2C2_FORCE_RESET();
+    for (volatile int d = 0; d < 100; d++);
+    __HAL_RCC_I2C2_RELEASE_RESET();
+
+    hi2c2.State = HAL_I2C_STATE_RESET;
+    HAL_I2C_Init(&hi2c2);
+}
+
 /**
  * I2C 写一个寄存器
  */
 static HAL_StatusTypeDef MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 {
     uint8_t data[2] = { reg, value };
-    return HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, data, 2, 5);
+    return HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, data, 2, I2C_TIMEOUT_MS);
 }
 
 /**
@@ -75,11 +140,11 @@ static HAL_StatusTypeDef MPU6050_Write_Reg(uint8_t reg, uint8_t value)
 static uint8_t MPU6050_Read_Reg(uint8_t reg)
 {
     uint8_t data = 0;
-    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &reg, 1, 5) != HAL_OK) {
+    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &reg, 1, I2C_TIMEOUT_MS) != HAL_OK) {
         printf("[MPU6050] I2C TX error during read_reg 0x%02X\r\n", reg);
         return 0xFF;
     }
-    if (HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, &data, 1, 5) != HAL_OK) {
+    if (HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, &data, 1, I2C_TIMEOUT_MS) != HAL_OK) {
         printf("[MPU6050] I2C RX error during read_reg 0x%02X\r\n", reg);
         return 0xFF;
     }
@@ -91,10 +156,24 @@ static uint8_t MPU6050_Read_Reg(uint8_t reg)
  */
 static HAL_StatusTypeDef MPU6050_Read_Buffer(uint8_t start_reg, uint8_t *buf, uint16_t len)
 {
-    if (HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &start_reg, 1, 5) != HAL_OK) {
-        return HAL_ERROR;
+    HAL_StatusTypeDef ret;
+    for (int retry = 0; retry <= I2C_RETRIES; retry++) {
+        ret = HAL_I2C_Master_Transmit(&hi2c2, s_dev_addr << 1, &start_reg, 1, I2C_TIMEOUT_MS);
+        if (ret != HAL_OK) {
+            MPU6050_I2C_Peripheral_Reset();
+            continue;
+        }
+        ret = HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, buf, len, I2C_TIMEOUT_MS);
+        if (ret != HAL_OK) {
+            MPU6050_I2C_Peripheral_Reset();
+            continue;
+        }
+        return HAL_OK;
     }
-    return HAL_I2C_Master_Receive(&hi2c2, s_dev_addr << 1, buf, len, 5);
+    if (ret != HAL_OK) {
+        MPU6050_I2C_Bus_Recover();
+    }
+    return ret;
 }
 
 /**

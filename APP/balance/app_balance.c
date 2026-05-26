@@ -37,9 +37,9 @@
 // KD：微分增益（作用于陀螺仪角速度，非数值微分）
 //     陀螺仪直读方式下 KD 的物理量纲 = KP × 秒
 //     典型比 KP/KD ≈ 5~10，当前 KP=8 → KD 建议 0.8~1.6
-#define BALANCE_KP          9.0f
+#define BALANCE_KP          12.0f
 #define BALANCE_KI          0.0f
-#define BALANCE_KD          0.6f
+#define BALANCE_KD          0.8f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -50,13 +50,16 @@
 #define SPEED_OUT_MIN      -30.0f
 
 // 速度环参数（让车有"跟手"感）
-#define SPEED_KP            1.0f
-#define SPEED_KI            0.01f   // 积分累积消除静态偏移
+// 反馈量 = 左右轮平均 RPM（非 pulse/s），量级约 ±50 RPM
+// KP: 速度误差 1 RPM → 期望倾角 0.1°，响应温和
+// KI: 消除稳态偏移，值要小，过大会导致前后晃动
+#define SPEED_KP            0.1f
+#define SPEED_KI            0.002f
 #define SPEED_KD            0.0f
 
-// 速度环积分限幅
-#define SPEED_INTEGRAL_MAX  50.0f
-#define SPEED_INTEGRAL_MIN -50.0f
+// 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
+#define SPEED_INTEGRAL_MAX  15.0f
+#define SPEED_INTEGRAL_MIN -15.0f
 
 // ============================================================
 // 内部状态
@@ -67,10 +70,6 @@ static PID_Controller speed_pid;    // 速度环
 
 // 速度环期望值（来自蓝牙遥控）
 static volatile int16_t target_speed = 0;
-
-// 左右轮速度（脉冲/s，10ms 采样）
-static volatile int16_t left_speed   = 0;
-static volatile int16_t right_speed  = 0;
 
 // 速度环输出（期望倾角），由 10ms 周期计算，5ms 周期使用
 static volatile float speed_output = 0.0f;
@@ -190,22 +189,15 @@ void Balance_Speed_Control_10ms(void)
     float left_rpm  = Encoder_Get_Left_Speed_RPM();
     float right_rpm = Encoder_Get_Right_Speed_RPM();
 
-    // 转换为脉冲/s（简化处理）
-    left_speed  = (int16_t)(left_rpm  * ENCODER_TOTAL_PPR / 60.0f);  // rpm → pulse/s
-    right_speed = (int16_t)(right_rpm * ENCODER_TOTAL_PPR / 60.0f); // rpm → pulse/s
+    float avg_rpm = (left_rpm + right_rpm) / 2.0f;
 
-    // 积分累计（用于速度环消除稳态误差）
-    float avg_speed = (float)(left_speed + right_speed) / 2.0f;
-
-    // 更新蓝牙指令期望速度
     target_speed = Bluetooth_Get_Target_Speed();
 
-    // ---- 速度环 PID 计算 ----
     if (balance_state == BALANCE_RUN) {
         speed_pid.integral *= SPEED_INTEGRAL_DECAY;
         speed_output = PID_Calculate(&speed_pid,
                                       (float)target_speed,
-                                      (float)avg_speed,
+                                      avg_rpm,
                                       0.01f);
     } else {
         speed_output = 0.0f;
