@@ -123,6 +123,9 @@ int main(void)
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
+            // [SPEED DEBUG] 速度环日志
+            Balance_Speed_Debug_Print();
+
 #if CTRL_TIMING_ENABLED
             // [ENCODER DEBUG] 触发速度更新（保证 RPM 变量最新）
             Encoder_Update_Speed();

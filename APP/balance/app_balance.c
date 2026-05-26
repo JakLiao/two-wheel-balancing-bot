@@ -53,8 +53,8 @@
 // 反馈量 = 左右轮平均 RPM（非 pulse/s），量级约 ±50 RPM
 // KP: 速度误差 1 RPM → 期望倾角 0.1°，响应温和
 // KI: 消除稳态偏移，值要小，过大会导致前后晃动
-#define SPEED_KP            0.1f
-#define SPEED_KI            0.005f
+#define SPEED_KP            0.10f
+#define SPEED_KI            0.02f
 #define SPEED_KD            0.0f
 
 // 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
@@ -74,6 +74,9 @@ static volatile int16_t target_speed = 0;
 // 速度环输出（期望倾角），由 10ms 周期计算，5ms 周期使用
 static volatile float speed_output = 0.0f;
 
+// 当前目标倾角（供调试打印）
+static volatile float current_target_angle = 0.0f;
+
 // 累计脉冲（用于速度积分）
 static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
@@ -81,7 +84,7 @@ static volatile int32_t right_pulse_acc = 0;
 // 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
 // 每周期积分 × 0.999，半衰期 ≈ 693 周期 = 6.9s
 // 效果：方向切换后积分残留缓慢消退，不影响正常漂移抑制
-#define SPEED_INTEGRAL_DECAY  0.995f
+#define SPEED_INTEGRAL_DECAY  0.996f
 
 // 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
@@ -92,6 +95,9 @@ static float balance_angle_offset = 0.0f;
 
 // 陀螺仪低通滤波状态（截断 20Hz 以上结构振动，保护 D 项）
 static float gyro_lp_filtered = 0.0f;
+
+// 编码器 RPM 低通滤波（平滑量化噪声，保护速度环 P 项）
+static float rpm_lp_filtered = 0.0f;
 
 // ============================================================
 // 初始化
@@ -170,7 +176,8 @@ void Balance_Control_5ms(void)
     // ---- 直立环 PID（目标倾角由速度环输出决定）----
     // 速度环输出 = 期望倾角（度）
     // 期望前进（speed_output > 0）→ 期望前倾 → target_angle 为负
-    float target_angle = -speed_output;
+    float target_angle = -speed_output;  // TODO: 符号待确认（推车不停→可能需改为正）
+    current_target_angle = target_angle;
     float gyro_rate = MPU6050_Get_Gyro_X();
 
     gyro_lp_filtered += 0.2f * (gyro_rate - gyro_lp_filtered);
@@ -200,13 +207,15 @@ void Balance_Speed_Control_10ms(void)
     target_speed = Bluetooth_Get_Target_Speed();
 
     if (balance_state == BALANCE_RUN) {
+        rpm_lp_filtered += 0.8f * (avg_rpm - rpm_lp_filtered);
         speed_pid.integral *= SPEED_INTEGRAL_DECAY;
         speed_output = PID_Calculate(&speed_pid,
                                       (float)target_speed,
-                                      avg_rpm,
+                                      rpm_lp_filtered,
                                       0.01f);
     } else {
         speed_output = 0.0f;
+        rpm_lp_filtered = 0.0f;
     }
 }
 
@@ -216,4 +225,20 @@ void Balance_Speed_Control_10ms(void)
 balance_state_t Balance_Get_State(void)
 {
     return balance_state;
+}
+
+// ============================================================
+// 速度环调试打印（供 main.c 500ms 周期调用）
+// ============================================================
+void Balance_Speed_Debug_Print(void)
+{
+    extern void BSP_Debug_Print(const char *format, ...);
+    extern int16_t Bluetooth_Get_Target_Speed(void);
+
+    int16_t ts = Bluetooth_Get_Target_Speed();
+    BSP_Debug_Print("[SPD] target=%+d rpm=%.1f out=%.2f angle=%.2f\r\n",
+                     ts,
+                     (double)rpm_lp_filtered,
+                     (double)speed_output,
+                     (double)current_target_angle);
 }
