@@ -17,7 +17,7 @@
 
 // ========== 全局开关：控制函数计时统计 ==========
 // 关闭后所有计时代码和打印统计被完全移除，零运行时开销
-#define CTRL_TIMING_ENABLED  1  // 1=开启统计，0=关闭
+#define CTRL_TIMING_ENABLED  0  // 1=开启统计，0=关闭
 #include "../APP/motor/app_motor.h"
 #include "../User/encoder/bsp_encoder.h"
 #include "../User/mpu6050/bsp_mpu6050.h"
@@ -123,13 +123,6 @@ int main(void)
             tick_500ms = now;
             HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
 
-            int32_t p_x100 = (int32_t)(MPU6050_Get_Pitch() * 100.0f);
-            int32_t gx_x10 = (int32_t)(MPU6050_Get_Gyro_X() * 10.0f);
-            printf("[HB] P=%ld.%02ld gx=%ld.%01ld cal=%d\r\n",
-                   (long)(p_x100 / 100), (long)abs(p_x100 % 100),
-                   (long)(gx_x10 / 10), (long)abs(gx_x10 % 10),
-                   MPU6050_Is_Calibrated());
-
 #if CTRL_TIMING_ENABLED
             // [ENCODER DEBUG] 触发速度更新（保证 RPM 变量最新）
             Encoder_Update_Speed();
@@ -151,7 +144,7 @@ int main(void)
             float rpm_r = Encoder_Get_Right_Speed_RPM();
             int32_t rpm_l_x10 = (int32_t)(rpm_l * 10.0f);
             int32_t rpm_r_x10 = (int32_t)(rpm_r * 10.0f);
-            printf("[ENC] RAW_L=%u RAW_R=%u | TOTAL_L=%+ld TOTAL_R=%+ld | DELTA_L=%+ld DELTA_R=%+ld | RPM_L=%+ld.%01ld RPM_R=%+ld.%01ld\r\n",
+            BSP_Debug_Print("[ENC] RAW_L=%u RAW_R=%u | TOTAL_L=%+ld TOTAL_R=%+ld | DELTA_L=%+ld DELTA_R=%+ld | RPM_L=%+ld.%01ld RPM_R=%+ld.%01ld\r\n",
                    raw_l, raw_r,
                    enc_l_total, enc_r_total,
                    cnt_l_delta, cnt_r_delta,
@@ -165,7 +158,7 @@ int main(void)
             int32_t p2_x100 = (int32_t)(MPU6050_Get_Pitch() * 100.0f);
             int32_t gx2_x10 = (int32_t)(MPU6050_Get_Gyro_X() * 10.0f);
             int32_t ap_x100 = (int32_t)(MPU6050_Get_Accel_Pitch() * 100.0f);
-            printf("P=%ld.%02ld gx=%ld.%01ld | ap=%ld.%02ld | A=%d %d %d G=%d %d %d\r\n",
+            BSP_Debug_Print("P=%ld.%02ld gx=%ld.%01ld | ap=%ld.%02ld | A=%d %d %d G=%d %d %d\r\n",
                    (long)(p2_x100 / 100), (long)abs(p2_x100 % 100),
                    (long)(gx2_x10 / 10), (long)abs(gx2_x10 % 10),
                    (long)(ap_x100 / 100), (long)abs(ap_x100 % 100),
@@ -198,18 +191,18 @@ int main(void)
                 if (timing.cycles_bal_min < timing.all_bal_min) timing.all_bal_min = timing.cycles_bal_min;
                 if (timing.cycles_bal_max > timing.all_bal_max) timing.all_bal_max = timing.cycles_bal_max;
 
-                printf("[CTRL] tick win: min=%lu max=%lu avg=%lu ms | all: min=%lu max=%lu\r\n",
+                BSP_Debug_Print("[CTRL] tick win: min=%lu max=%lu avg=%lu ms | all: min=%lu max=%lu\r\n",
                        (unsigned long)window_min, (unsigned long)window_max,
                        (unsigned long)window_avg,
                        (unsigned long)ctrl_all_min, (unsigned long)ctrl_all_max);
-                printf("[CTRL] mpu: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu (%lu)\r\n",
+                BSP_Debug_Print("[CTRL] mpu: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu (%lu)\r\n",
                        (unsigned long)(mpu_min_x10 / 10), (unsigned long)(mpu_min_x10 % 10),
                        (unsigned long)(mpu_max_x10 / 10), (unsigned long)(mpu_max_x10 % 10),
                        (unsigned long)(mpu_avg_x10 / 10), (unsigned long)(mpu_avg_x10 % 10),
                        (unsigned long)(all_mpu_min_x10 / 10), (unsigned long)(all_mpu_min_x10 % 10),
                        (unsigned long)(all_mpu_max_x10 / 10), (unsigned long)(all_mpu_max_x10 % 10),
                        (unsigned long)sc);
-                printf("[CTRL] bal: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu\r\n",
+                BSP_Debug_Print("[CTRL] bal: min=%lu.%lu max=%lu.%lu avg=%lu.%lu us | all: min=%lu.%lu max=%lu.%lu\r\n",
                        (unsigned long)(bal_min_x10 / 10), (unsigned long)(bal_min_x10 % 10),
                        (unsigned long)(bal_max_x10 / 10), (unsigned long)(bal_max_x10 % 10),
                        (unsigned long)(bal_avg_x10 / 10), (unsigned long)(bal_avg_x10 % 10),

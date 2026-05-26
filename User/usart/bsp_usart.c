@@ -1,9 +1,12 @@
 /**
  * bsp_usart.c
- * USART1 驱动 + 非阻塞调试打印
+ * USART1 驱动 + DMA 非阻塞调试打印
  *
- * printf（fputc）: 阻塞方式，仅用于初始化阶段
- * BSP_Debug_Print: DMA 非阻塞方式，用于运行时调试打印
+ * printf（fputc）: 阻塞方式，等待 DMA 完成后发送
+ * BSP_Debug_Print: DMA 非阻塞方式，DMA 忙时丢弃消息
+ *
+ * 前置条件：USART1_IRQHandler 必须调用 HAL_UART_IRQHandler
+ *           否则 DMA 完成后 gState 永远不会回到 READY
  */
 
 #include "bsp_usart.h"
@@ -33,7 +36,9 @@ void BSP_USART_Transmit_DMA(const uint8_t *data, uint16_t len)
         if (HAL_GetTick() - tick_start >= 10) return; // 超时放弃
     }
     uart_tx_busy = 1;
-    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)data, len);
+    if (HAL_UART_Transmit_DMA(&huart1, (uint8_t*)data, len) != HAL_OK) {
+        uart_tx_busy = 0;
+    }
 }
 
 /**
@@ -57,9 +62,9 @@ void BSP_Debug_Print(const char *fmt, ...)
     va_end(args);
 
     if (len > 0 && len < DEBUG_BUF_SIZE) {
-        HAL_StatusTypeDef ret = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)debug_buf, (uint16_t)len);
-        if (ret == HAL_OK) {
-            uart_tx_busy = 1;
+        uart_tx_busy = 1;
+        if (HAL_UART_Transmit_DMA(&huart1, (uint8_t*)debug_buf, (uint16_t)len) != HAL_OK) {
+            uart_tx_busy = 0;
         }
     }
 }
@@ -72,6 +77,10 @@ void BSP_Debug_Print(const char *fmt, ...)
 int fputc(int ch, FILE *f)
 {
     (void)f;
+    uint32_t start = HAL_GetTick();
+    while (uart_tx_busy) {
+        if (HAL_GetTick() - start >= 50) return EOF;
+    }
     HAL_UART_Transmit(&huart1, (uint8_t*)&ch, 1, 10);
     return ch;
 }

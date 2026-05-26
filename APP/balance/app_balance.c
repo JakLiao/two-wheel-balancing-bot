@@ -37,9 +37,9 @@
 // KD：微分增益（作用于陀螺仪角速度，非数值微分）
 //     陀螺仪直读方式下 KD 的物理量纲 = KP × 秒
 //     典型比 KP/KD ≈ 5~10，当前 KP=8 → KD 建议 0.8~1.6
-#define BALANCE_KP          12.0f
+#define BALANCE_KP          20.0f
 #define BALANCE_KI          0.0f
-#define BALANCE_KD          0.8f
+#define BALANCE_KD          0.25f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -84,6 +84,9 @@ static volatile balance_state_t balance_state = BALANCE_IDLE;
 // 机械平衡点偏置（传感器零位 vs 实际重心垂直位置的差异）
 // 启动时自动采样车身稳态角度作为补偿
 static float balance_angle_offset = 0.0f;
+
+// 陀螺仪低通滤波状态（截断 20Hz 以上结构振动，保护 D 项）
+static float gyro_lp_filtered = 0.0f;
 
 // ============================================================
 // 初始化
@@ -153,6 +156,7 @@ void Balance_Control_5ms(void)
         PID_Reset(&speed_pid);
         balance_state = BALANCE_IDLE;
         speed_output = 0.0f;
+        gyro_lp_filtered = 0.0f;
         return;
     }
 
@@ -164,7 +168,9 @@ void Balance_Control_5ms(void)
     float target_angle = -speed_output;
     float gyro_rate = MPU6050_Get_Gyro_X();
 
-    float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_rate, 0.005f);
+    gyro_lp_filtered += 0.2f * (gyro_rate - gyro_lp_filtered);
+
+    float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_lp_filtered, 0.005f);
     float final_output = -output;
 
     // 差速转向
