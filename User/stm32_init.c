@@ -309,7 +309,12 @@ void MX_USART1_Init(void)
 // ============================================================
 void USART1_IRQHandler(void)
 {
+    extern UART_HandleTypeDef huart1;
     extern void Bluetooth_UART_IRQHandler(void);
+    
+    // 先调用 HAL_UART_IRQHandler 处理 USART1 DMA 传输完成回调
+    HAL_UART_IRQHandler(&huart1);
+    // 再调用蓝牙相关的中断处理
     Bluetooth_UART_IRQHandler();
 }
 
