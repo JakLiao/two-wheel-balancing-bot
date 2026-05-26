@@ -257,17 +257,17 @@ int main(void)
         }
 
         // --- 10ms：编码器测速 + 速度环控制（100Hz）---
-        // if (now - tick_10ms >= 10) {
-        //     tick_10ms = now;
-        //     Encoder_Update_Speed();
-        //     Balance_Speed_Control_10ms();
-        // }
+        if (now - tick_10ms >= 10) {
+            tick_10ms = now;
+            Encoder_Update_Speed();
+            Balance_Speed_Control_10ms();
+        }
 
         // --- 50ms：蓝牙指令处理（20Hz）---
-        // if (now - tick_50ms >= 50) {
-        //     tick_50ms = now;
-        //     Bluetooth_Process();
-        // }
+        if (now - tick_50ms >= 50) {
+            tick_50ms = now;
+            Bluetooth_Process();
+        }
 
         __WFI(); // 等待中断，降低功耗
     }

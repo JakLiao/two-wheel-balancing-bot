@@ -37,9 +37,9 @@
 // KD：微分增益（作用于陀螺仪角速度，非数值微分）
 //     陀螺仪直读方式下 KD 的物理量纲 = KP × 秒
 //     典型比 KP/KD ≈ 5~10，当前 KP=8 → KD 建议 0.8~1.6
-#define BALANCE_KP          20.0f
+#define BALANCE_KP          6.0f
 #define BALANCE_KI          0.0f
-#define BALANCE_KD          0.25f
+#define BALANCE_KD          0.16f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -54,7 +54,7 @@
 // KP: 速度误差 1 RPM → 期望倾角 0.1°，响应温和
 // KI: 消除稳态偏移，值要小，过大会导致前后晃动
 #define SPEED_KP            0.1f
-#define SPEED_KI            0.002f
+#define SPEED_KI            0.005f
 #define SPEED_KD            0.0f
 
 // 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
@@ -77,6 +77,11 @@ static volatile float speed_output = 0.0f;
 // 累计脉冲（用于速度积分）
 static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
+
+// 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
+// 每周期积分 × 0.999，半衰期 ≈ 693 周期 = 6.9s
+// 效果：方向切换后积分残留缓慢消退，不影响正常漂移抑制
+#define SPEED_INTEGRAL_DECAY  0.995f
 
 // 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
@@ -180,11 +185,6 @@ void Balance_Control_5ms(void)
 
     Motor_Differential(left_pwm, right_pwm);
 }
-
-// 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
-// 每周期积分 × 0.995，半衰期 ≈ 140 周期 = 1.4s
-// 效果：方向切换后积分残留快速消退，避免 target_angle 反向
-#define SPEED_INTEGRAL_DECAY  0.995f
 
 // ============================================================
 // 10ms 控制周期：速度环
