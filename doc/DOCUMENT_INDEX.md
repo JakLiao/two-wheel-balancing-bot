@@ -10,7 +10,8 @@
 | 4 | [KEIL_BUILD.md](KEIL_BUILD.md) | Keil 工程配置、SWD 烧录 |
 | 5 | [INCLUDE_DEPENDENCY.md](INCLUDE_DEPENDENCY.md) | 所有 `.c` / `.h` 的 include 依赖关系、extern 句柄声明表 |
 | 6 | [PID_TUNING_PRACTICAL.md](PID_TUNING_PRACTICAL.md) | 双环 PID 实战整定步骤、参数参考值 |
+| 7 | **[PID_PHYSICAL_CALCULATION.md](PID_PHYSICAL_CALCULATION.md)** | **PID 参数物理推导、Z-N 法计算、Kp/Kd/Ki 过大过小判断标准（2026-05-27 新增）** |
 
 ---
 
-_更新：2026-05-15_
+_更新：2026-05-27_

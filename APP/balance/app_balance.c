@@ -33,13 +33,14 @@
 // ============================================================
 
 // 直立环参数（核心！）
-// KP：比例增益，越大响应越快，太大会抖
-// KD：微分增益（作用于陀螺仪角速度，非数值微分）
-//     陀螺仪直读方式下 KD 的物理量纲 = KP × 秒
-//     典型比 KP/KD ≈ 5~10，当前 KP=8 → KD 建议 0.8~1.6
-#define BALANCE_KP          6.0f
+// D-on-measurement: D 项 = KD × ω_gyro（陀螺仪直读角速度），非 pitch 数值微分
+//   Pitch 数值微分会引入加速度计噪声放大（×4.0 因子）和 ~5.5ms 相位滞后，
+//   导致 D 项失效。陀螺仪直读是平衡车 D 项的唯一正确做法。
+// KP：比例增益，越大响应越快，太大会抖，计算范围 2.8 ~ 9.7
+// KD：微分增益，实测推荐区间 0.08~0.30，当前 KD=0.16（回正干脆无余振）
+#define BALANCE_KP          6.4f
 #define BALANCE_KI          0.0f
-#define BALANCE_KD          0.16f
+#define BALANCE_KD          0.25f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -51,10 +52,10 @@
 
 // 速度环参数（让车有"跟手"感）
 // 反馈量 = 左右轮平均 RPM（非 pulse/s），量级约 ±50 RPM
-// KP: 速度误差 1 RPM → 期望倾角 0.1°，响应温和
-// KI: 消除稳态偏移，值要小，过大会导致前后晃动
-#define SPEED_KP            0.10f
-#define SPEED_KI            0.02f
+// KP: 速度误差 1 RPM → 期望倾角 0.5°，快速响应
+// KI: 消除稳态偏移，Ki ≈ Kp/200，值要小，过大会导致前后晃动
+#define SPEED_KP            0.5f
+#define SPEED_KI            0.0025f
 #define SPEED_KD            0.0f
 
 // 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
@@ -82,7 +83,7 @@ static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
 
 // 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
-// 每周期积分 × 0.999，半衰期 ≈ 693 周期 = 6.9s
+// 每周期积分 × 0.996，半衰期 ≈ 173 周期 = 1.73s
 // 效果：方向切换后积分残留缓慢消退，不影响正常漂移抑制
 #define SPEED_INTEGRAL_DECAY  0.996f
 
@@ -92,9 +93,6 @@ static volatile balance_state_t balance_state = BALANCE_IDLE;
 // 机械平衡点偏置（传感器零位 vs 实际重心垂直位置的差异）
 // 启动时自动采样车身稳态角度作为补偿
 static float balance_angle_offset = 0.0f;
-
-// 陀螺仪低通滤波状态（截断 20Hz 以上结构振动，保护 D 项）
-static float gyro_lp_filtered = 0.0f;
 
 // 编码器 RPM 低通滤波（平滑量化噪声，保护速度环 P 项）
 static float rpm_lp_filtered = 0.0f;
@@ -167,22 +165,19 @@ void Balance_Control_5ms(void)
         PID_Reset(&speed_pid);
         balance_state = BALANCE_IDLE;
         speed_output = 0.0f;
-        gyro_lp_filtered = 0.0f;
         return;
     }
 
     balance_state = BALANCE_RUN;
 
-    // ---- 直立环 PID（目标倾角由速度环输出决定）----
-    // 速度环输出 = 期望倾角（度）
-    // 期望前进（speed_output > 0）→ 期望前倾 → target_angle 为负
-    float target_angle = -speed_output;  // TODO: 符号待确认（推车不停→可能需改为正）
+    // ---- 直立环 PID（D-on-measurement：陀螺仪直读角速度）----
+    // P 项用互补滤波 pitch（加计静态准 + 陀螺动态快）
+    // D 项用陀螺仪直读 ω_gyro（不受线性加速度污染，零额外延迟）
+    float target_angle = -speed_output;
     current_target_angle = target_angle;
     float gyro_rate = MPU6050_Get_Gyro_X();
 
-    gyro_lp_filtered += 0.2f * (gyro_rate - gyro_lp_filtered);
-
-    float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_lp_filtered, 0.005f);
+    float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_rate, 0.005f);
     float final_output = -output;
 
     // 差速转向
@@ -207,7 +202,7 @@ void Balance_Speed_Control_10ms(void)
     target_speed = Bluetooth_Get_Target_Speed();
 
     if (balance_state == BALANCE_RUN) {
-        rpm_lp_filtered += 0.8f * (avg_rpm - rpm_lp_filtered);
+        rpm_lp_filtered += 0.3f * (avg_rpm - rpm_lp_filtered);
         speed_pid.integral *= SPEED_INTEGRAL_DECAY;
         speed_output = PID_Calculate(&speed_pid,
                                       (float)target_speed,
