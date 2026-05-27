@@ -31,7 +31,7 @@
 
 // 刻度因子
 // 注意：量程由 GYRO_CONFIG 和 ACCEL_CONFIG 决定，见 Init()
-#define GYRO_SCALE    131.0f    // ±250°/s → 131 LSB/(°/s)
+#define GYRO_SCALE    131.072f    // ±250°/s → 131 LSB/(°/s)
 #define ACCEL_SCALE   16384.0f  // ±2g     → 16384 LSB/g
 
 // 互补滤波
@@ -350,7 +350,7 @@ void MPU6050_Read_Angles(void)
     gyro_z  = raw_gz - (int16_t)gyro_z_bias;
 
     // 加速度计俯仰角
-    float accel_pitch = atan2f((float)accel_y, (float)accel_z) * 57.29578f;
+    float accel_pitch = atan2f((float)accel_y, (float)accel_z) / 3.1415926f * 180.0f;
     accel_pitch_raw = accel_pitch;
 
     // 陀螺仪角速度

@@ -222,6 +222,20 @@ int main(void)
 #endif
         }
 
+        // --- 50ms：蓝牙指令处理（20Hz）---
+        if (now - tick_50ms >= 50) {
+            tick_50ms = now;
+            Bluetooth_Process();
+        }
+
+        // --- 10ms：编码器测速 + 速度环控制（100Hz）---
+        // 注意：放在 5ms 直立环前面，确保速度环输出能被同周期的直立环使用
+        if (now - tick_10ms >= 10) {
+            tick_10ms = now;
+            Encoder_Update_Speed();
+            Balance_Speed_Control_10ms();
+        }
+
         // --- 5ms：姿态传感器读取 + 直立环控制（200Hz）---
         if (now - tick_5ms >= 5) {
             tick_5ms = now;
@@ -257,19 +271,6 @@ int main(void)
 #else
             Balance_Control_5ms();
 #endif
-        }
-
-        // --- 10ms：编码器测速 + 速度环控制（100Hz）---
-        if (now - tick_10ms >= 10) {
-            tick_10ms = now;
-            Encoder_Update_Speed();
-            Balance_Speed_Control_10ms();
-        }
-
-        // --- 50ms：蓝牙指令处理（20Hz）---
-        if (now - tick_50ms >= 50) {
-            tick_50ms = now;
-            Bluetooth_Process();
         }
 
         __WFI(); // 等待中断，降低功耗

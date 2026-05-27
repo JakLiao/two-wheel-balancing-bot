@@ -37,7 +37,7 @@
 //   Pitch 数值微分会引入加速度计噪声放大（×4.0 因子）和 ~5.5ms 相位滞后，
 //   导致 D 项失效。陀螺仪直读是平衡车 D 项的唯一正确做法。
 // KP：比例增益，越大响应越快，太大会抖，计算范围 2.8 ~ 9.7
-// KD：微分增益，实测推荐区间 0.08~0.30，当前 KD=0.16（回正干脆无余振）
+// KD：微分增益，实测推荐区间 0.08~0.30，当前 KD=0.25（回正干脆无余振）
 #define BALANCE_KP          6.4f
 #define BALANCE_KI          0.0f
 #define BALANCE_KD          0.25f
@@ -50,12 +50,16 @@
 #define SPEED_OUT_MAX       30.0f
 #define SPEED_OUT_MIN      -30.0f
 
-// 速度环参数（让车有"跟手"感）
+// 速度环参数（仅纠正秒级漂移，不干涉直立环动态）
 // 反馈量 = 左右轮平均 RPM（非 pulse/s），量级约 ±50 RPM
-// KP: 速度误差 1 RPM → 期望倾角 0.5°，快速响应
-// KI: 消除稳态偏移，Ki ≈ Kp/200，值要小，过大会导致前后晃动
-#define SPEED_KP            0.5f
-#define SPEED_KI            0.0025f
+// KP: 速度误差 1 RPM → 期望倾角 0.08°，极低增益防止级联正反馈
+//     40RPM推车 → target=3.2°，直立环自然消化，不引发振荡
+// KI: Ki ≈ Kp/125 = 0.00064，缓慢消除超长周期漂移
+// RPM 低通 α=0.3: τ≈28ms（~3采样周期），有效阻隔直立环振荡分量（2~5Hz）进入速度环
+// speed_output 输出低通 α=0.1: τ≈95ms（~10采样周期），期望倾角百毫秒级缓慢变化
+//   级联控制核心原则：外环带宽必须远低于内环（5~10倍），否则形成正反馈振荡
+#define SPEED_KP            0.08f
+#define SPEED_KI            0.00064f
 #define SPEED_KD            0.0f
 
 // 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
@@ -83,9 +87,9 @@ static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
 
 // 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
-// 每周期积分 × 0.996，半衰期 ≈ 173 周期 = 1.73s
+// 每周期积分 × 0.995，半衰期 ≈ 1.4s（抑制轻推后震荡）
 // 效果：方向切换后积分残留缓慢消退，不影响正常漂移抑制
-#define SPEED_INTEGRAL_DECAY  0.996f
+#define SPEED_INTEGRAL_DECAY  0.995f
 
 // 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
@@ -94,8 +98,13 @@ static volatile balance_state_t balance_state = BALANCE_IDLE;
 // 启动时自动采样车身稳态角度作为补偿
 static float balance_angle_offset = 0.0f;
 
-// 编码器 RPM 低通滤波（平滑量化噪声，保护速度环 P 项）
+// 编码器 RPM 低通滤波（α=0.3, τ≈28ms, 阻隔直立环振荡分量进入速度环）
+// 级联稳定性要求外环输入不对内环振荡频率响应，α越小隔离度越高
 static float rpm_lp_filtered = 0.0f;
+
+// 速度环输出低通滤波（α=0.1, τ≈95ms, 期望倾角百毫秒级缓慢变化）
+// 物理约束：平衡车倾角不可突变，target_angle 须平滑过渡防止级联正反馈
+static float speed_output_lp = 0.0f;
 
 // ============================================================
 // 初始化
@@ -204,12 +213,15 @@ void Balance_Speed_Control_10ms(void)
     if (balance_state == BALANCE_RUN) {
         rpm_lp_filtered += 0.3f * (avg_rpm - rpm_lp_filtered);
         speed_pid.integral *= SPEED_INTEGRAL_DECAY;
-        speed_output = PID_Calculate(&speed_pid,
-                                      (float)target_speed,
-                                      rpm_lp_filtered,
-                                      0.01f);
+        float speed_raw = PID_Calculate(&speed_pid,
+                                         (float)target_speed,
+                                         rpm_lp_filtered,
+                                         0.01f);
+        speed_output_lp += 0.1f * (speed_raw - speed_output_lp);
+        speed_output = speed_output_lp;
     } else {
         speed_output = 0.0f;
+        speed_output_lp = 0.0f;
         rpm_lp_filtered = 0.0f;
     }
 }
