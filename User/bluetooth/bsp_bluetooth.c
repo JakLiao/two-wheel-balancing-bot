@@ -81,8 +81,8 @@ int16_t Bluetooth_Get_Target_Speed(void)
 {
     char cmd = bt_last_cmd;
     switch (cmd) {
-        case 'F': return  200;  // 前进 200 pulse/s（待标定）
-        case 'B': return -200;  // 后退 200 pulse/s
+        case 'F': return  -200;  // 前进（已修复方向）
+        case 'B': return  200;  // 后退（已修复方向）
         case 'L': return    0;  // 左转：左轮慢右轮快（由转向处理）
         case 'R': return    0;  // 右转：右轮慢左轮快
         case 'S':
