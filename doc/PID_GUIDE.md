@@ -175,18 +175,18 @@ Ziegler-Nichols 临界比例度法参数表（欠阻尼修正）：
 
 | 参数 | 物理推导 | 江协换算 | 推荐区间 | 当前实测 |
 |------|---------|---------|---------|---------|
-| **BALANCE_KP** | ≈6.4 | 2.8~9.7 | **4.0 ~ 8.0** | **6.0 ✅** |
-| **BALANCE_KD** | ≈2.5（需等效转换）| — | **0.08 ~ 0.30** | **0.16 ✅** |
+| **BALANCE_KP** | ≈6.4 | 2.8~9.7 | **4.0 ~ 8.0** | **6.4 ✅** |
+| **BALANCE_KD** | ≈2.5（需等效转换）| — | **0.08 ~ 0.30** | **0.25 ✅** |
 | **BALANCE_KI** | 直立环不需要积分 | — | **0.0** | **0.0 ✅** |
 
-> ⚠️ **Kd 说明**：本车 Kd 直接作用于陀螺仪角速度（`D-on-measurement`），而非标准"D-on-error"。等效转换后：Z-N 推导的 Kd≈2.5 转换为本车等效 Kd ≈ 2.5 × (ω_gyro/ω_error) × (dt/量程) ≈ 0.10~0.30，实测值 0.16 高度吻合。
+> ⚠️ **Kd 说明**：本车 Kd 直接作用于陀螺仪角速度（`D-on-measurement`），而非标准"D-on-error"。等效转换后：Z-N 推导的 Kd≈2.5 转换为本车等效 Kd ≈ 2.5 × (ω_gyro/ω_error) × (dt/量程) ≈ 0.10~0.30，实测值 0.25 高度吻合。
 
 ### 速度环推荐范围
 
 | 参数 | 当前值 | 推荐值 | 说明 |
 |------|--------|--------|------|
-| **SPEED_KP** | **0.1 ⚠️** | **0.5 ~ 1.0** | 偏小，遥控响应迟钝 |
-| **SPEED_KI** | **0.005** | **0.005 ~ 0.015** | 符合公式 ✅ |
+| **SPEED_KP** | **0.08 ✅** | **0.5 ~ 1.0** | 调至 0.08 防级联正反馈，响应略慢 |
+| **SPEED_KI** | **0.00064 ✅** | **Ki≈Kp/125** | 极低增益，消除超长周期漂移 |
 | **SPEED_KD** | 0.0 | 0.0 | 不需要 |
 
 **速度环经验公式（江协科技）：**
@@ -296,24 +296,26 @@ P=-0.02 gx=0.0 | acc_pitch=0.07 | Ax=-10 Ay=19 Az=16385 Gx=2 Gy=-3 Gz=-2
 
 ### 直立环参数
 
-```c
-#define BALANCE_KP      6.0f
-#define BALANCE_KI      0.0f
-#define BALANCE_KD      0.16f
+### 直立环参数（commit f840ea6，实测稳定）
 
-#define BALANCE_OUT_MAX  100
-#define BALANCE_OUT_MIN -100
+```c
+#define BALANCE_KP          6.4f   // Z-N 临界比例度法推导值
+#define BALANCE_KI          0.0f
+#define BALANCE_KD          0.25f  // 作用于陀螺仪角速度（D-on-measurement）
+
+#define BALANCE_OUT_MAX     100
+#define BALANCE_OUT_MIN    -100
 ```
 
-### 速度环参数
+### 速度环参数（commit f840ea6，防级联正反馈）
 
 ```c
-#define SPEED_KP        0.1f
-#define SPEED_KI        0.005f
-#define SPEED_KD        0.0f
+#define SPEED_KP            0.08f  // 极低增益，外环带宽远低于内环
+#define SPEED_KI            0.00064f  // Ki≈Kp/125
+#define SPEED_KD            0.0f
 
-#define SPEED_OUT_MAX   30.0f
-#define SPEED_OUT_MIN  -30.0f
+#define SPEED_OUT_MAX       30.0f
+#define SPEED_OUT_MIN      -30.0f
 ```
 
 ### 安全阈值
