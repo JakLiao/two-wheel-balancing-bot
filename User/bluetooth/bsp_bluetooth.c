@@ -2,7 +2,7 @@
  * bluetooth.c
  * HC-05 蓝牙指令解析
  * 串口：USART2 (PA2=TX, PA3=RX)
- * 波特率：9600（HC-05 默认）
+ * 波特率：115200（HC-05 需先用 AT 指令配置为 115200）
  * 控制指令：
  *   F = 前进
  *   B = 后退
@@ -34,7 +34,7 @@ static volatile char bt_last_cmd = 'S';
  */
 void Bluetooth_Init(void)
 {
-    // USART1 中断使能（在 MX_USART1_Init 中已配置）
+    // USART2 中断使能（在 MX_USART2_Init 中已配置）
     __HAL_UART_ENABLE_IT(&huart2, UART_IT_RXNE);
 }
 
