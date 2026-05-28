@@ -65,9 +65,9 @@ void Encoder_Update_Speed(void)
     // 速度计算：rpm = 脉冲增量 / 每转脉冲数 / 采样时间(s)
     // dt = 0.01s（10ms）
     // 公式：rpm = delta_count * 60 / (ENCODER_TOTAL_PPR * dt)
-    //      = delta_count * 60 / (528 * 4 * 0.01)
-    //      = delta_count * 60 / 21.12
-    //      = delta_count * 2.84
+    //      = delta_count * 60 / (224 * 4 * 0.01)
+    //      = delta_count * 60 / 8.96
+    //      = delta_count * 6.696
     left_speed_rpm  = (float)delta_left  * 60.0f / (ENCODER_TOTAL_PPR * 0.01f);
     right_speed_rpm = (float)delta_right * 60.0f / (ENCODER_TOTAL_PPR * 0.01f);
 }

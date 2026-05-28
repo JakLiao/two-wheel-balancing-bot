@@ -12,7 +12,7 @@
  *   - 目标：车体保持垂直（angle = 0°）
  *
  * 速度环（外环，中频 100Hz）：
- *   - 输入：编码器速度（脉冲/s）
+ *   - 输入：编码器速度（RPM）
  *   - 输出：期望倾角（度）
  *   - 目标：跟踪遥控指令速度
  *
@@ -73,7 +73,7 @@
 static PID_Controller balance_pid;   // 直立环
 static PID_Controller speed_pid;    // 速度环
 
-// 速度环期望值（来自蓝牙遥控）
+// 速度环期望值（来自蓝牙遥控，单位：RPM）
 static volatile int16_t target_speed = 0;
 
 // 速度环输出（期望倾角），由 10ms 周期计算，5ms 周期使用
