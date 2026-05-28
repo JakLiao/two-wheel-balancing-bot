@@ -4,14 +4,12 @@
 
 | 顺序 | 文档 | 内容 |
 |------|------|------|
-| 1 | [PROJECT_INDEX.md](PROJECT_INDEX.md) | 仓库结构、里程碑、待确认项 |
-| 2 | [HARDWARE_SPEC.md](HARDWARE_SPEC.md) | BOM、引脚、电源、共地、线序与冲突分析 |
-| 3 | [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | 控制架构、互补滤波公式、双编码器定时器约束、任务频率 |
-| 4 | [KEIL_BUILD.md](KEIL_BUILD.md) | Keil 工程配置、SWD 烧录 |
-| 5 | [INCLUDE_DEPENDENCY.md](INCLUDE_DEPENDENCY.md) | 所有 `.c` / `.h` 的 include 依赖关系、extern 句柄声明表 |
-| 6 | [PID_TUNING_PRACTICAL.md](PID_TUNING_PRACTICAL.md) | 双环 PID 实战整定步骤、参数参考值 |
-| 7 | **[PID_PHYSICAL_CALCULATION.md](PID_PHYSICAL_CALCULATION.md)** | **PID 参数物理推导、Z-N 法计算、Kp/Kd/Ki 过大过小判断标准（2026-05-27 新增）** |
+| 1 | [HARDWARE_SPEC.md](HARDWARE_SPEC.md) | BOM、引脚、电源、共地、线序与冲突分析 |
+| 2 | [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | 控制架构、互补滤波公式、双编码器定时器约束、任务频率 |
+| 3 | [KEIL_BUILD.md](KEIL_BUILD.md) | Keil 工程配置、SWD 烧录 |
+| 4 | [INCLUDE_DEPENDENCY.md](INCLUDE_DEPENDENCY.md) | 所有 `.c` / `.h` 的 include 依赖关系、extern 句柄声明表 |
+| 5 | **[PID_GUIDE.md](PID_GUIDE.md)** | **PID 完整指南：物理推导 + Z-N 法 + 量程换算 + 实战整定 + 判断标准（v3.0 合并版）** |
 
 ---
 
-_更新：2026-05-27_
+_更新：2026-05-28_

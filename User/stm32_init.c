@@ -19,7 +19,8 @@ TIM_HandleTypeDef htim3;   // TIM3: PWM（PB0/PB1）
 TIM_HandleTypeDef htim2;   // TIM2: 左编码器（PA15/PB3，TIM2 重映射后）
 TIM_HandleTypeDef htim4;   // TIM4: 右编码器（PB6/PB7）
 I2C_HandleTypeDef hi2c2;   // I2C2: MPU6050（PB10/PB11）
-UART_HandleTypeDef huart1;  // USART1: HC-05（PA9/PA10）
+UART_HandleTypeDef huart1;  // USART1: CH340（PA9/PA10）
+UART_HandleTypeDef huart2;  // USART2: HC-05（PA2/PA3）
 DMA_HandleTypeDef hdma_usart1_tx;  // USART1 TX DMA（消除 printf 阻塞）
 
 // ============================================================
@@ -49,13 +50,6 @@ void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET); // 上拉高，工作状态
-
-    // --- PA9/PA10: USART1 TX/RX（HC-05 蓝牙）---
-    GPIO_InitStruct.Pin   = GPIO_PIN_9 | GPIO_PIN_10;   // PA9=TX, PA10=RX
-    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // --- PB0/PB1: TIM3 PWM 输出（电机调速）---
     GPIO_InitStruct.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
@@ -261,7 +255,7 @@ void MX_I2C2_Init(void)
 }
 
 // ============================================================
-// USART1 初始化：HC-05 蓝牙（PA9=TX, PA10=RX，115200，8N1）
+// USART1 初始化：CH340 调试串口（PA9=TX, PA10=RX，115200，8N1）
 // ============================================================
 void MX_USART1_Init(void)
 {
@@ -302,6 +296,50 @@ void MX_USART1_Init(void)
     // DMA 中断优先级（低于 USART1 RX），最后 enable
     HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+}
+
+// ============================================================
+// USART2 初始化：HC-05 蓝牙（PA2=TX, PA3=RX，115200，8N1）
+// HC-05 TX → PA3(USART2_RX)
+// HC-05 RX ← PA2(USART2_TX)
+// ============================================================
+void MX_USART2_Init(void)
+{
+    // PA2=USART2_TX (AF_PP), PA3=USART2_RX (input floating)
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    // PA2 = USART2_TX（复用推挽输出）
+    GPIO_InitStruct.Pin   = GPIO_PIN_2;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    // PA3 = USART2_RX（复用输入）
+    GPIO_InitStruct.Pin   = GPIO_PIN_3;
+    GPIO_InitStruct.Mode  = GPIO_MODE_AF_INPUT;
+    GPIO_InitStruct.Pull  = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    __HAL_RCC_USART2_CLK_ENABLE();
+
+    huart2.Instance           = USART2;
+    huart2.Init.BaudRate    = 115200;
+    huart2.Init.WordLength  = UART_WORDLENGTH_8B;
+    huart2.Init.StopBits    = UART_STOPBITS_1;
+    huart2.Init.Parity      = UART_PARITY_NONE;
+    huart2.Init.Mode        = UART_MODE_TX_RX;
+    huart2.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart2) != HAL_OK) {
+        Error_Handler();
+    }
+
+    // USART2 RX 中断使能
+    HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USART2_IRQn);
 }
 
 // ============================================================

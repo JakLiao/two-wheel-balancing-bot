@@ -8,7 +8,7 @@
 ## 一、推荐工作流
 
 1. **STM32CubeMX**（与芯片包版本匹配）新建工程：MCU 选 `STM32F103C8Tx`。  
-2. 在 Cube 中配置时钟、GPIO、**TIM1 PWM**（电机）、**TIM2 + TIM4 编码器模式**（双轮）、**I2C1**（MPU6050，若与编码器引脚冲突则启用 **I2C1 Remap** 到 PB8/PB9）、**USARTx**（HC-05）、SysTick。  
+2. 在 Cube 中配置时钟、GPIO、**TIM1 PWM**（电机）、**TIM2 + TIM4 编码器模式**（双轮）、**I2C1**（MPU6050，若与编码器引脚冲突则启用 **I2C1 Remap** 到 PB8/PB9）、**USART2**（HC-05，PA2/PA3）、SysTick。  
 3. 生成代码时选择 **MDK-ARM V5** 工具链。  
 4. 用 Keil 打开生成的 `.uvprojx`，将本仓库 `src/`、`include/` 中业务源文件加入工程（或保持 Cube 生成结构，把驱动与 `balance.c` 等拷贝到 `User` 目录并在工程中 Add Files）。  
 5. 在 `main.c` 初始化流程中调用：`MPU6050_Init`、`Encoder_Init`、`Motor_Init`、PID 初始化、`Balance_Init` 等（与现逻辑一致即可）。
@@ -44,7 +44,7 @@
 
 - **编译**：Keil 菜单 Project → Build Target（F7）。  
 - **烧录器**：ST-Link / CMSIS-DAP 等；在 **Options for Target → Debug / Utilities** 中选择对应驱动。  
-- **串口打印**：可用 USART1（常接 USB 转串口）做调试，蓝牙 USART 专用于遥控。
+- **串口打印**：USART1（PA9/PA10）接 CH340 用于调试；HC-05 蓝牙接 **USART2**（PA2/PA3），两者完全独立。
 
 ---
 
@@ -63,4 +63,4 @@ two-wheel-balancing-bot/
 
 ---
 
-_Last updated: 2026-05-14_
+_Last updated: 2026-05-27_

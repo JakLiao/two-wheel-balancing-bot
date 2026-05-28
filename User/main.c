@@ -56,7 +56,8 @@ int main(void)
     MX_TIM2_Init();    // 左编码器（PA15/PB3，TIM2 重映射后）
     MX_TIM4_Init();    // 右编码器（PB6/PB7）
     MX_I2C2_Init();    // MPU6050 I2C（PB10/PB11）
-    MX_USART1_Init();  // HC-05 蓝牙（PA9/PA10）
+    MX_USART1_Init();  // CH340 调试串口（PA9/PA10）
+    MX_USART2_Init();  // HC-05 蓝牙（USART2 PA2/PA3）
 
     // 驱动层初始化
     Motor_Init();
@@ -70,7 +71,8 @@ int main(void)
     printf("=========================================\r\n");
     printf("  Balance Bot FW Started!\r\n");
     printf("  SYSCLK: 72MHz, UART: 115200 8N1\r\n");
-    printf("  PA9=TX, PA10=RX\r\n");
+    printf("  USART2: HC-05 (PA2=TX, PA3=RX)\r\n");
+    printf("  USART1: CH340 (PA9=TX, PA10=RX)\r\n");
     printf("=========================================\r\n");
     printf("MPU6050 Pitch=%ld deg\r\n", (long)(int32_t)(MPU6050_Get_Pitch()));
     

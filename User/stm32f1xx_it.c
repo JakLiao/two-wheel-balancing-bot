@@ -245,6 +245,17 @@ void DMA1_Channel4_IRQHandler(void)
 }
 
 /**
+  * @brief  USART2 中断处理（HC-05 蓝牙接收）
+  */
+void USART2_IRQHandler(void)
+{
+    extern UART_HandleTypeDef huart2;
+    extern void Bluetooth_UART_IRQHandler(void);
+    HAL_UART_IRQHandler(&huart2);
+    Bluetooth_UART_IRQHandler();
+}
+
+/**
   * @}
   */
 
