@@ -299,7 +299,7 @@ void MX_USART1_Init(void)
 }
 
 // ============================================================
-// USART2 初始化：HC-05 蓝牙（PA2=TX, PA3=RX，115200，8N1）
+// USART2 初始化：HC-05 蓝牙（PA2=TX, PA3=RX，9600，8N1）
 // HC-05 TX → PA3(USART2_RX)
 // HC-05 RX ← PA2(USART2_TX)
 // ============================================================
@@ -326,7 +326,7 @@ void MX_USART2_Init(void)
     __HAL_RCC_USART2_CLK_ENABLE();
 
     huart2.Instance           = USART2;
-    huart2.Init.BaudRate    = 115200;
+    huart2.Init.BaudRate    = 9600;
     huart2.Init.WordLength  = UART_WORDLENGTH_8B;
     huart2.Init.StopBits    = UART_STOPBITS_1;
     huart2.Init.Parity      = UART_PARITY_NONE;
