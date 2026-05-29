@@ -371,12 +371,12 @@ void MPU6050_Read_Angles(void)
 
 float MPU6050_Get_Pitch(void)
 {
-    return calibrated ? pitch_angle : 0.0f;
+    return calibrated ? -pitch_angle : 0.0f;
 }
 
 float MPU6050_Get_Gyro_X(void)
 {
-    return calibrated ? ((float)gyro_x / GYRO_SCALE) : 0.0f;
+    return calibrated ? (-(float)gyro_x / GYRO_SCALE) : 0.0f;
 }
 
 float MPU6050_Get_Gyro_Z(void)

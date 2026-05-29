@@ -77,18 +77,18 @@ char Bluetooth_Read_Command(void)
  * 获取当前速度期望值（供平衡车速度环使用）
  * @return target speed in RPM, positive=forward
  *
- * 速度环反馈量单位为 RPM（Encoder_Get_XXX_Speed_RPM），
- * 此处 setpoint 必须统一为 RPM，否则 PID 误差被放大 ~15 倍。
- * 转换：1 RPM = ENCODER_TOTAL_PPR / 60 ≈ 14.93 pulse/s
+ * 符号约定：正 RPM = 前进（与编码器 Encoder_Get_XXX_Speed_RPM 一致）
+ * 速度环 PID: error = target_speed - rpm_filtered
+ *   error > 0 → speed_output > 0 → target_angle > 0 → 前倾 → 加速（负反馈）
  *
- * 当前设定 ±13 RPM（≈ 200 pulse/s），对应车轮线速度 ≈ 48 mm/s
+ * 当前设定 ±13 RPM，对应车轮线速度 ≈ 48 mm/s
  */
 int16_t Bluetooth_Get_Target_Speed(void)
 {
     char cmd = bt_last_cmd;
     switch (cmd) {
-        case 'F': return  -13;  // 前进 ≈ 194 pulse/s（已修复方向）
-        case 'B': return   13;  // 后退 ≈ 194 pulse/s（已修复方向）
+        case 'F': return   13;  // 前进：正 RPM（与编码器约定一致）
+        case 'B': return  -13;  // 后退：负 RPM
         case 'L': return    0;  // 左转：左轮慢右轮快（由转向处理）
         case 'R': return    0;  // 右转：右轮慢左轮快
         case 'S':

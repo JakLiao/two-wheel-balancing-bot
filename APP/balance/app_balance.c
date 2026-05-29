@@ -37,10 +37,12 @@
 //   Pitch 数值微分会引入加速度计噪声放大（×4.0 因子）和 ~5.5ms 相位滞后，
 //   导致 D 项失效。陀螺仪直读是平衡车 D 项的唯一正确做法。
 // KP：比例增益，越大响应越快，太大会抖，计算范围 2.8 ~ 9.7
-// KD：微分增益，实测推荐区间 0.08~0.30，当前 KD=0.25（回正干脆无余振）
+// KD：微分增益，实测推荐区间 0.08~0.30
+//     KD=0.25: 回正干脆但平衡点有微振（轮子前后小幅度滚动）
+//     KD=0.30: 阻尼增强，微振明显减少，回正更沉稳
 #define BALANCE_KP          6.4f
 #define BALANCE_KI          0.0f
-#define BALANCE_KD          0.25f
+#define BALANCE_KD          0.30f
 
 // 直立环输出限幅（PWM 最大值，对应 MOTOR_PWM_MAX=100）
 #define BALANCE_OUT_MAX     100
@@ -51,16 +53,26 @@
 #define SPEED_OUT_MIN      -30.0f
 
 // 速度环参数（仅纠正秒级漂移，不干涉直立环动态）
-// 反馈量 = 左右轮平均 RPM（非 pulse/s），量级约 ±50 RPM
-// KP: 速度误差 1 RPM → 期望倾角 0.08°，极低增益防止级联正反馈
-//     40RPM推车 → target=3.2°，直立环自然消化，不引发振荡
-// KI: Ki ≈ Kp/125 = 0.00064，缓慢消除超长周期漂移
+// 反馈量 = 左右轮平均 RPM，量级约 ±50 RPM
+// 符号约定：正 RPM = 前进，正 target_angle = 前倾
+// KP: 速度误差 1 RPM → 期望倾角 0.12°
+//     推车 40RPM → target_angle=4.8°，直立环自然消化，2~3 次回正
+// KI: Ki ≈ Kp/100 = 0.0012，消除稳态漂移，减少轮子零点附近来回滚动
 // RPM 低通 α=0.3: τ≈28ms（~3采样周期），有效阻隔直立环振荡分量（2~5Hz）进入速度环
 // speed_output 输出低通 α=0.1: τ≈95ms（~10采样周期），期望倾角百毫秒级缓慢变化
 //   级联控制核心原则：外环带宽必须远低于内环（5~10倍），否则形成正反馈振荡
-#define SPEED_KP            0.08f
-#define SPEED_KI            0.00064f
+#define SPEED_KP            0.12f
+#define SPEED_KI            0.0012f
 #define SPEED_KD            0.0f
+
+// 速度阻尼补偿（直接叠加在直立环 PWM 输出上，不经过 target_angle）
+// 解决串联 PID 架构的固有问题：速度环通过 target_angle 控制倾角时，
+//   直立环执行"后仰减速"的方式是让轮子前进（倒立摆原理），反而加速轮子，
+//   形成控制死区。阻尼项直接在 PWM 层面施加与速度成正比的制动力，
+//   绕过直立环的误差抵消，使微小倾角就能产生有效制动力矩。
+// 理论完全抵消值 = Kp_speed × Kp_balance = 0.12 × 6.4 = 0.768
+// 实测：0.5 抬起时方向翻转流畅但落地颤动大；0.1 落地平衡颤动最小
+#define SPEED_VELOCITY_DAMPING  0.1f
 
 // 速度环积分限幅（匹配输出限幅 ±30°，留 50% 余量给 P 项）
 #define SPEED_INTEGRAL_MAX  15.0f
@@ -87,9 +99,9 @@ static volatile int32_t left_pulse_acc  = 0;
 static volatile int32_t right_pulse_acc = 0;
 
 // 速度环积分衰减系数（消除方向切换时积分饱和卡顿）
-// 每周期积分 × 0.995，半衰期 ≈ 1.4s（抑制轻推后震荡）
-// 效果：方向切换后积分残留缓慢消退，不影响正常漂移抑制
-#define SPEED_INTEGRAL_DECAY  0.995f
+// 每周期积分 × 0.990，半衰期 ≈ 0.7s（抑制轻推后震荡）
+// 效果：方向切换后积分残留快速消退，减少轮子零点附近来回滚动
+#define SPEED_INTEGRAL_DECAY  0.990f
 
 // 平衡车状态（类型定义在 balance.h 中）
 static volatile balance_state_t balance_state = BALANCE_IDLE;
@@ -174,20 +186,30 @@ void Balance_Control_5ms(void)
         PID_Reset(&speed_pid);
         balance_state = BALANCE_IDLE;
         speed_output = 0.0f;
+        speed_output_lp = 0.0f;
+        rpm_lp_filtered = 0.0f;
         return;
     }
 
-    balance_state = BALANCE_RUN;
+    // 启动条件：车体在保护范围内即从 IDLE 切换到 RUN
+    if (balance_state == BALANCE_IDLE) {
+        balance_state = BALANCE_RUN;
+        PID_Reset(&balance_pid);
+        PID_Reset(&speed_pid);
+        speed_output = 0.0f;
+        speed_output_lp = 0.0f;
+        rpm_lp_filtered = 0.0f;
+    }
 
     // ---- 直立环 PID（D-on-measurement：陀螺仪直读角速度）----
     // P 项用互补滤波 pitch（加计静态准 + 陀螺动态快）
     // D 项用陀螺仪直读 ω_gyro（不受线性加速度污染，零额外延迟）
-    float target_angle = -speed_output;
+    float target_angle = speed_output;
     current_target_angle = target_angle;
     float gyro_rate = MPU6050_Get_Gyro_X();
 
     float output = PID_Calculate2(&balance_pid, target_angle, pitch, gyro_rate, 0.005f);
-    float final_output = -output;
+    float final_output = output + SPEED_VELOCITY_DAMPING * rpm_lp_filtered;
 
     // 差速转向
     int8_t turn = Bluetooth_Get_Turn();

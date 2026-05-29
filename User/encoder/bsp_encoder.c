@@ -46,8 +46,9 @@ void Encoder_Update_Speed(void)
     int16_t cur_right = (int16_t)htim4.Instance->CNT;
 
     // 计算增量（处理 16 位定时器溢出/回绕）
-    int16_t delta_left  = cur_left  - last_left_count;
-    int16_t delta_right = cur_right - last_right_count;
+    // 取负：使前进方向 RPM 为正值（编码器 A/B 相接线导致默认方向相反）
+    int16_t delta_left  = -(cur_left  - last_left_count);
+    int16_t delta_right = -(cur_right - last_right_count);
 
     // 简单溢出处理（±32767 范围内）
     if (delta_left  > +30000) delta_left  -= 65536;

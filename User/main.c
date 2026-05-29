@@ -116,9 +116,39 @@ int main(void)
     static int32_t dbg_cnt_left_prev  = 0;   // 上一次 500ms 的累计计数
     static int32_t dbg_cnt_right_prev = 0;
 
+    // ========== 符号验证日志（500ms 周期，始终开启） ==========
+    uint32_t tick_sign = 0;
+
     while (1)
     {
         uint32_t now = HAL_GetTick();
+
+        // --- 500ms：符号验证日志（始终开启，用于实车验证正负号约定） ---
+        if (now - tick_sign >= 500) {
+            tick_sign = now;
+
+            float pitch = MPU6050_Get_Pitch();
+            float gyro_x = MPU6050_Get_Gyro_X();
+            float rpm_l = Encoder_Get_Left_Speed_RPM();
+            float rpm_r = Encoder_Get_Right_Speed_RPM();
+            float avg_rpm = (rpm_l + rpm_r) / 2.0f;
+            int16_t tgt_spd = Bluetooth_Get_Target_Speed();
+            int8_t turn = Bluetooth_Get_Turn();
+
+            int32_t pitch_x100  = (int32_t)(pitch * 100.0f);
+            int32_t gyro_x10   = (int32_t)(gyro_x * 10.0f);
+            int32_t rpm_l_x10  = (int32_t)(rpm_l * 10.0f);
+            int32_t rpm_r_x10  = (int32_t)(rpm_r * 10.0f);
+            int32_t avg_x10    = (int32_t)(avg_rpm * 10.0f);
+
+            BSP_Debug_Print("[SIGN] pitch=%+ld.%02ld gyro=%+ld.%01ld | rpm_L=%+ld.%01ld rpm_R=%+ld.%01ld avg=%+ld.%01ld | tgt=%+d turn=%+d\r\n",
+                   (long)(pitch_x100 / 100), (long)abs(pitch_x100 % 100),
+                   (long)(gyro_x10 / 10), (long)abs(gyro_x10 % 10),
+                   (long)(rpm_l_x10 / 10), (long)abs(rpm_l_x10 % 10),
+                   (long)(rpm_r_x10 / 10), (long)abs(rpm_r_x10 % 10),
+                   (long)(avg_x10 / 10), (long)abs(avg_x10 % 10),
+                   (int)tgt_spd, (int)turn);
+        }
 
         // --- 2000ms：心跳灯 + MPU6050 角度打印 + 编码器调试 ---
         if (now - tick_500ms >= 2000) {
