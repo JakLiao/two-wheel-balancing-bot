@@ -40,7 +40,7 @@
 // KD：微分增益，实测推荐区间 0.08~0.30
 //     KD=0.25: 回正干脆但平衡点有微振（轮子前后小幅度滚动）
 //     KD=0.30: 阻尼增强，微振明显减少，回正更沉稳
-#define BALANCE_KP          6.4f
+#define BALANCE_KP          8.0f
 #define BALANCE_KI          0.0f
 #define BALANCE_KD          0.30f
 
@@ -61,8 +61,8 @@
 // RPM 低通 α=0.3: τ≈28ms（~3采样周期），有效阻隔直立环振荡分量（2~5Hz）进入速度环
 // speed_output 输出低通 α=0.1: τ≈95ms（~10采样周期），期望倾角百毫秒级缓慢变化
 //   级联控制核心原则：外环带宽必须远低于内环（5~10倍），否则形成正反馈振荡
-#define SPEED_KP            0.12f
-#define SPEED_KI            0.0012f
+#define SPEED_KP            0.15f
+#define SPEED_KI            0.002f
 #define SPEED_KD            0.0f
 
 // 速度阻尼补偿（直接叠加在直立环 PWM 输出上，不经过 target_angle）
@@ -234,7 +234,9 @@ void Balance_Speed_Control_10ms(void)
 
     if (balance_state == BALANCE_RUN) {
         rpm_lp_filtered += 0.3f * (avg_rpm - rpm_lp_filtered);
-        speed_pid.integral *= SPEED_INTEGRAL_DECAY;
+        if (target_speed == 0) {
+            speed_pid.integral *= SPEED_INTEGRAL_DECAY;
+        }
         float speed_raw = PID_Calculate(&speed_pid,
                                          (float)target_speed,
                                          rpm_lp_filtered,

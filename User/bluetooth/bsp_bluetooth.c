@@ -27,6 +27,10 @@ static volatile uint16_t bt_rx_tail = 0;
 static volatile char bt_command = 'S';  // 默认停止
 static volatile char bt_last_cmd = 'S';
 
+// 运动命令锁存：收到 F/B/L/R 后记录时间戳，500ms 内忽略 S（过滤按钮松开发送的 S）
+static volatile uint32_t bt_move_cmd_tick = 0;
+#define BT_STOP_DEBOUNCE_MS  500
+
 /**
  * 蓝牙初始化
  * - 配置 USART1 (9600, 8N1)
@@ -103,8 +107,8 @@ int16_t Bluetooth_Get_Target_Speed(void)
 int8_t Bluetooth_Get_Turn(void)
 {
     switch (bt_last_cmd) {
-        case 'L': return -80; // 左转差速
-        case 'R': return +80; // 右转差速
+        case 'L': return -5; // 左转差速
+        case 'R': return +5; // 右转差速
         default:  return   0;
     }
 }
@@ -114,7 +118,19 @@ int8_t Bluetooth_Get_Turn(void)
  */
 void Bluetooth_Process(void)
 {
-    Bluetooth_Read_Command();
+    while (bt_rx_head != bt_rx_tail) {
+        char cmd = (char)bt_rx_buf[bt_rx_tail];
+        bt_rx_tail = (bt_rx_tail + 1) % BT_RX_BUF_SIZE;
+
+        if (cmd == 'F' || cmd == 'B' || cmd == 'L' || cmd == 'R') {
+            bt_last_cmd = cmd;
+            bt_move_cmd_tick = HAL_GetTick();
+        } else if (cmd == 'S') {
+            if (HAL_GetTick() - bt_move_cmd_tick > BT_STOP_DEBOUNCE_MS) {
+                bt_last_cmd = 'S';
+            }
+        }
+    }
 }
 
 /**
